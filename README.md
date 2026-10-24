@@ -120,6 +120,22 @@ Also new: **drop a PDF or text file into KNOWLEDGE** and it is extracted on your
 Full reasoning — including which parts of the usual "supercharge" advice do *not* apply to a
 single-file PWA — is in **[SUPERCHARGE.md](SUPERCHARGE.md)**.
 
+### 🧩 v4.2 — it now decides what is worth remembering to send
+
+JARVIS no longer dumps every fact it has into every question. Memory, tasks, documents,
+tool descriptions and chat history are ranked by relevance (**BM25**) against what you
+just asked and cut to a budget.
+
+```
+before: 3,224 tokens of fixed overhead every turn
+after : 1,327 for "what's the weather in Kanpur"   (−59%)
+```
+
+The **🧩 WHAT I SEND TO THE AI** panel in the TOOLS tab shows the last decision: what went
+in, what was held back, tokens spent, and whether your data is actually being saved.
+A full code audit (4 real bugs found and fixed, including silent data loss when browser
+storage fills up) is in **[AUDIT.md](AUDIT.md)**.
+
 ---
 
 **Auto-Learn** (default ON): after every conversation, JARVIS silently extracts durable facts about you and saves them. **This is its self-training** — it gets smarter about your life every single day, and you can audit everything in the **🧠 MIND** tab.

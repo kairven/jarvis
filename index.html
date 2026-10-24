@@ -357,6 +357,13 @@
       </div>
 
       <div class="card">
+        <h3>🧩 WHAT I SEND TO THE AI — THE DATA DECISION</h3>
+        <p>Every turn, I choose what is worth paying tokens for. This shows the last decision.
+        <b>Included</b> is what the model saw; <b>held back</b> is what was cut for being irrelevant.</p>
+        <div id="ctx-panel"></div>
+      </div>
+
+      <div class="card">
         <h3>🐙 SUPERCHARGE PACK — OPEN SOURCE BEHIND THIS</h3>
         <p>Real repositories doing the heavy lifting. <b style="color:var(--cyan)">INTEGRATED</b> = already running in your browser, zero install. <b style="color:var(--gold)">NEXT</b> = the upgrade path for real automation.</p>
 
@@ -602,7 +609,31 @@ function load(){
     return f;
   }
 }
-function save(){ try{ store.setItem("jarvis_msk_v1", JSON.stringify(state)); }catch(e){} }
+/* AUDIT FIX: this used to swallow quota errors, so once localStorage filled up
+   every memory/task silently stopped persisting and vanished on reload. */
+var saveState = { ok: true, warned: false };
+function save(){
+  try{
+    store.setItem("jarvis_msk_v1", JSON.stringify(state));
+    saveState.ok = true; saveState.warned = false;
+  }catch(e){
+    saveState.ok = false;
+    if(!saveState.warned){
+      saveState.warned = true;
+      var full = /quota|exceed|storage/i.test(e.name + " " + e.message);
+      toast(full
+        ? "⚠️ Browser storage is FULL — new changes are NOT being saved. Delete old documents in KNOWLEDGE to free space."
+        : "⚠️ Could not save to this browser (" + e.name + "). Export a backup now.", 9000);
+    }
+  }
+}
+function storageUse(){
+  try{
+    var raw = store.getItem("jarvis_msk_v1") || "";
+    var cache = store.getItem(TOOL_CACHE_KEY) || "";
+    return { state: raw.length, cache: cache.length, ok: saveState.ok };
+  }catch(e){ return { state:0, cache:0, ok:false }; }
+}
 
 /* ---------- helpers ---------- */
 function $(id){ return document.getElementById(id); }
@@ -737,18 +768,122 @@ function builtinCore(){
   "NEVER invent a tool result, never show a [TOOL: ...] line in your final answer, and never call the same tool twice for the same information.\n";
 }
 
-/* ---------- the live tool catalog injected into every prompt ---------- */
-function toolCatalog(){
-  var on = enabledTools();
-  var p = "\n=== TOOL BELT — " + on.length + " live tools this turn (free, keyless) ===\n";
-  p += "Call one on its own line: [TOOL: id args]. Args are PLAIN TEXT — no JSON, no quotes. Max 3 per reply.\n";
-  p += "Rule: if the answer depends on live or exact data, call the tool instead of guessing. One call is usually enough.\n";
-  on.forEach(function(t){
-    var d = String(t.desc || "").split(". ")[0];
-    if(d.length > 88) d = d.slice(0, 86) + "…";
-    p += "- " + t.id + ": " + d + " | e.g. [TOOL: " + t.id + (t.sample ? " " + t.sample : "") + "]\n";
+/* ================================================================
+   CONTEXT ENGINE — decide which data is worth sending each turn
+   ----------------------------------------------------------------
+   Principle (ratel-ai/ratel, context engineering): send the smallest
+   set of high-signal data, not everything you have. Fixed budgets per
+   section, BM25 relevance instead of naive keyword counting, and
+   progressive disclosure for tools. No vector DB, no embeddings.
+   Every decision is recorded in lastContext so it can be inspected.
+   ================================================================ */
+var CONTEXT_BUDGET = {
+  memChars: 1500,     /* facts about him  */
+  taskChars: 700,     /* open commitments */
+  knowChars: 2200,    /* his own documents */
+  histChars: 5000,    /* conversation      */
+  toolFull: 6         /* tools described in full; the rest are id-only */
+};
+var lastContext = null;
+
+/* BM25: term-frequency, inverse-document-frequency, length normalised.
+   Better than counting substrings because rare words weigh more. */
+function bm25(query, docs){
+  var k1 = 1.4, b = 0.75;
+  var q = tokens(query);
+  var out = docs.map(function(){ return 0; });
+  if(!q.length || !docs.length) return out;
+  var uniqQ = {};
+  q.forEach(function(t){ uniqQ[t] = 1; });
+  var N = docs.length, df = {}, tfs = [], lens = [], total = 0;
+  docs.forEach(function(d){
+    var toks = tokens(d), tf = {};
+    lens.push(toks.length); total += toks.length;
+    toks.forEach(function(t){ tf[t] = (tf[t] || 0) + 1; });
+    tfs.push(tf);
+    Object.keys(uniqQ).forEach(function(t){ if(tf[t]) df[t] = (df[t] || 0) + 1; });
   });
-  return p;
+  var avg = (total / N) || 1;
+  for(var i = 0; i < N; i++){
+    var score = 0;
+    for(var t in uniqQ){
+      var f = tfs[i][t] || 0;
+      if(!f) continue;
+      var idf = Math.log(1 + (N - (df[t] || 0) + 0.5) / ((df[t] || 0) + 0.5));
+      score += idf * (f * (k1 + 1)) / (f + k1 * (1 - b + b * (lens[i] / avg)));
+    }
+    out[i] = score;
+  }
+  return out;
+}
+
+/* pick the highest-scoring items that fit a character budget.
+   If nothing matches the query, fall back to the freshest few so the
+   assistant still knows him — but never the whole list. */
+function pickByRelevance(items, textOf, query, budget, hardCap, fallbackCount){
+  var docs = items.map(textOf);
+  var scores = bm25(query, docs);
+  var matched = scores.some(function(x){ return x > 0; });
+  var order = items.map(function(_, i){ return i; });
+  order.sort(function(a, c){ return (scores[c] - scores[a]); });
+  var picked = [], used = 0, seen = 0;
+  for(var k = 0; k < order.length; k++){
+    var i = order[k];
+    seen++;
+    if(!matched && picked.length >= fallbackCount) break;
+    if(picked.length >= hardCap) break;
+    var t = textOf(items[i]) || "";
+    if(used + t.length > budget && picked.length) continue;
+    picked.push(i);
+    used += t.length;
+  }
+  return { idx: picked, chars: used, dropped: Math.max(0, items.length - picked.length), matched: matched };
+}
+
+/* ---------- the live tool catalog injected into every prompt ---------- */
+/* Progressive disclosure: describe in full only the tools this turn is
+   likely to need; list the rest by id so they remain callable. */
+function toolCatalog(query){
+  var on = enabledTools();
+  var q = String(query || lastUserText() || "");
+  /* score each tool against what the user just said */
+  var docs = on.map(function(t){ return t.id + " " + t.name + " " + t.desc + " " + (t.sample || ""); });
+  var scores = bm25(q, docs);
+  var order = on.map(function(_, i){ return i; }).sort(function(a, b){ return scores[b] - scores[a]; });
+  var full = [];
+  for(var i = 0; i < order.length && full.length < CONTEXT_BUDGET.toolFull; i++){
+    if(scores[order[i]] > 0) full.push(order[i]);
+  }
+  /* nothing matched (small talk): describe the everyday tools, not all of them */
+  var DEFAULT_FULL = ["search", "calc", "weather", "time", "wiki", "remember"];
+  if(!full.length){
+    DEFAULT_FULL.forEach(function(id){
+      var i = on.findIndex ? on.findIndex(function(t){ return t.id === id; }) : -1;
+      if(i > -1 && full.indexOf(i) === -1) full.push(i);
+    });
+  }
+  var fullIds = {};
+  full.forEach(function(i){ fullIds[on[i].id] = 1; });
+
+  var p = "\n=== TOOL BELT — " + on.length + " live tools ===\n";
+  p += "Call one on its own line: [TOOL: id args]. Args are PLAIN TEXT — no JSON, no quotes. Max 3 per reply.\n";
+  p += "Rule: if the answer depends on live or exact data, call the tool instead of guessing.\n";
+  p += "Menu: " + on.map(function(t){ return t.id; }).join(", ") + "\n";
+  if(full.length){
+    p += "Details for the tools this request is likely to need:\n";
+    full.forEach(function(i){
+      var t = on[i];
+      var d = String(t.desc || "").split(". ")[0];
+      if(d.length > 80) d = d.slice(0, 78) + "…";
+      p += "- " + t.id + ": " + d + " | e.g. [TOOL: " + t.id + (t.sample ? " " + t.sample : "") + "]\n";
+    });
+  }
+  var rest = on.filter(function(t){ return !fullIds[t.id]; }).map(function(t){ return t.id; });
+  if(rest.length){
+    p += "Also callable, same syntax: " + rest.join(", ") +
+      ". If you are unsure what one of these takes, call [TOOL: tools] to see the full catalogue.\n";
+  }
+  return { text: p, full: full.length, ids: on.length };
 }
 
 /* ---------- system prompt assembly ---------- */
@@ -756,22 +891,48 @@ function systemPrompt(opts){
   opts = opts || {};
   var now = new Date().toString();
   var p = (state.masterPrompt && state.masterPrompt.trim()) ? state.masterPrompt.trim() + "\n\n" : builtinCore();
-  p += toolCatalog();
+  var query = opts.query || lastUserText() || "";
+  var ctx = { query: query, mem: null, task: null, know: null, tools: null };
+
+  var cat = toolCatalog(query);
+  ctx.tools = { full: cat.full, ids: cat.ids };
+  p += cat.text;
   p += "Current date/time: " + now + "\n\n";
 
+  /* --- memory: only the facts that matter for THIS question --- */
+  var memPick = pickByRelevance(state.memories, function(m){ return m.text; }, query,
+                                CONTEXT_BUDGET.memChars, 12, 6);
+  ctx.mem = { used: memPick.idx.length, dropped: memPick.dropped, chars: memPick.chars, matched: memPick.matched };
   p += "=== MEMORY — facts about Mohd Sameer Khan (use naturally, don't recite unless asked) ===\n";
-  p += (state.memories.length ? state.memories.slice(-60).map(function(m,i){ return (i+1)+". "+m.text; }).join("\n") : "(empty — you are still learning about him)") + "\n\n";
+  p += (memPick.idx.length
+    ? memPick.idx.map(function(i, n){ return (n + 1) + ". " + state.memories[i].text; }).join("\n")
+    : "(empty — you are still learning about him)");
+  if(memPick.dropped > 0) p += "\n(" + memPick.dropped + " less relevant facts held back — call tools with /tools if you need more.)";
+  p += "\n\n";
 
+  /* --- operator tasks: open ones only, trimmed --- */
   var openTasks = state.tasks.filter(function(t){ return !t.done; });
+  var taskPick = pickByRelevance(openTasks, function(t){ return t.text; }, query,
+                                 CONTEXT_BUDGET.taskChars, 6, 4);
+  ctx.task = { used: taskPick.idx.length, dropped: taskPick.dropped, chars: taskPick.chars };
   p += "=== OPERATOR TRACKER — his open commitments (nudge him about these when relevant) ===\n";
-  p += (openTasks.length ? openTasks.slice(-15).map(function(t,i){ return (i+1)+". "+t.text; }).join("\n") : "(none)") + "\n\n";
+  p += (taskPick.idx.length
+    ? taskPick.idx.map(function(i, n){ return (n + 1) + ". " + String(openTasks[i].text).slice(0, 110); }).join("\n")
+    : "(none)");
+  if(taskPick.dropped > 0) p += "\n(" + taskPick.dropped + " more open tasks not shown.)";
+  p += "\n\n";
 
+  /* --- knowledge: BM25, with a real relevance floor --- */
   if(opts.knowledge !== false && state.knowledge.length){
     p += "=== KNOWLEDGE BASE (his own notes/documents — use if relevant) ===\n";
-    var rel = retrieveKnowledge(opts.query || lastUserText() || "");
-    p += rel ? rel : "(no relevant documents)\n";
+    var rel = retrieveKnowledge(query);
+    ctx.know = { used: rel ? rel.docs : 0, dropped: state.knowledge.length - (rel ? rel.docs : 0), chars: rel ? rel.text.length : 0 };
+    p += rel ? rel.text : "(no relevant documents)\n";
     p += "\n";
   }
+  ctx.chars = p.length;
+  ctx.tokens = Math.round(p.length / 4);
+  lastContext = ctx;
 
   if(state.board && !opts.noBoard){
     p += "\n=== BOARD OF ADVISORS ===\n";
@@ -795,20 +956,32 @@ function lastUserText(){
 function tokens(s){
   return String(s).toLowerCase().replace(/[^a-z0-9\u0900-\u097F\s]/g," ").split(/\s+/).filter(function(w){ return w.length > 2; });
 }
+/* Knowledge lookup: BM25 over title+body, with a relevance floor so an
+   unrelated question does not drag a document into the prompt. */
 function retrieveKnowledge(query){
-  if(!state.knowledge.length) return "";
-  var qt = tokens(query); if(!qt.length) qt = tokens(lastUserText());
-  var scored = state.knowledge.map(function(doc){
-    var hay = (doc.title + " " + doc.text).toLowerCase(), score = 0;
-    qt.forEach(function(w){ var m = hay.split(w).length - 1; score += m; });
-    return { doc: doc, score: score };
-  }).filter(function(x){ return x.score > 0; })
-    .sort(function(a,b){ return b.score - a.score; })
+  if(!state.knowledge.length) return null;
+  var q = String(query || "");
+  if(!tokens(q).length) q = lastUserText();
+  var docs = state.knowledge.map(function(d){ return d.title + " " + d.text.slice(0, 4000); });
+  var scores = bm25(q, docs);
+  var best = 0;
+  scores.forEach(function(x){ if(x > best) best = x; });
+  if(best <= 0) return null;
+  var order = scores.map(function(x, i){ return i; })
+    .filter(function(i){ return scores[i] >= best * 0.45; })   /* keep close contenders only */
+    .sort(function(a, b){ return scores[b] - scores[a]; })
     .slice(0, 2);
-  if(!scored.length) return "";
-  return scored.map(function(x){
-    return "--- " + x.doc.title + " ---\n" + x.doc.text.slice(0, 1400);
-  }).join("\n\n");
+  if(!order.length) return null;
+  var used = 0, out = [];
+  order.forEach(function(i){
+    var d = state.knowledge[i];
+    var room = Math.min(1400, CONTEXT_BUDGET.knowChars - used);
+    if(room < 200) return;
+    var body = d.text.slice(0, room);
+    used += body.length;
+    out.push("--- " + d.title + " ---\n" + body);
+  });
+  return out.length ? { docs: out.length, text: out.join("\n\n") } : null;
 }
 
 /* ---------- BRAIN ENGINE v3 — 8 providers, automatic failover ---------- */
@@ -943,7 +1116,6 @@ function mathEval(src){
   if(!s) throw new Error("nothing to calculate");
   if(!/^[0-9a-z+\-*/%^(),.]+$/.test(s)) throw new Error("unsupported characters in expression");
   var i = 0;
-  function peek(){ return s[i]; }
   function eat(c){ if(s[i] === c){ i++; return true; } return false; }
   function expr(){
     var v = term();
@@ -1325,6 +1497,8 @@ var TOOLS = [
       var img = "https://api.qrserver.com/v1/create-qr-code/?size=340x340&margin=12&data=" + encodeURIComponent(data.slice(0, 900));
       return { text:"🔳 QR code for `" + data.slice(0, 120) + "`", img: img };
     } },
+  { id:"tools", emoji:"🧰", name:"Tool catalogue", desc:"Show every tool with its arguments — use when no described tool fits.", sample:"",
+    fn:async function(){ return toolListMarkdown(); } },
   { id:"random", emoji:"🎲", name:"Randomiser", desc:"Dice, coin flips, UUIDs and strong local passwords.", sample:"3d6",
     fn:async function(a){ return randomNow(a); } },
   { id:"timer", emoji:"⏱️", name:"Timer & reminder", desc:"Set a countdown; I alert you here (and speak it) when it fires.", sample:"10m tea",
@@ -1618,6 +1792,7 @@ function renderTools(){
   var hc = $("home-city"); if(hc && !hc.value) hc.value = state.homeCity || "";
   renderToolLog();
   renderStats();
+  renderContext();
 }
 function toggleTool(id){
   state.toolsOff = state.toolsOff || [];
@@ -1767,6 +1942,38 @@ async function runDiagnostic(){
 
   diagRunning = false;
   renderStats();
+}
+function renderContext(){
+  var el = $("ctx-panel"); if(!el) return;
+  var c = lastContext;
+  if(!c){
+    el.innerHTML = '<p class="mono" style="font-size:11.5px;color:var(--dim)">Ask me something — then this panel shows exactly what was sent to the model and what was left out.</p>';
+    return;
+  }
+  var u = storageUse();
+  var rows = [
+    ["Memory facts",    c.mem  ? c.mem.used  + " of " + (c.mem.used + c.mem.dropped) : "–", c.mem  ? c.mem.chars  : 0, c.mem  ? c.mem.dropped  : 0],
+    ["Open tasks",      c.task ? c.task.used + " of " + (c.task.used + c.task.dropped) : "–", c.task ? c.task.chars : 0, c.task ? c.task.dropped : 0],
+    ["Your documents",  c.know ? c.know.used + " of " + (c.know.used + c.know.dropped) : "–", c.know ? c.know.chars : 0, c.know ? c.know.dropped : 0],
+    ["Tool descriptions", c.tools ? c.tools.full + " of " + c.tools.ids + " in full" : "–", 0, c.tools ? c.tools.ids - c.tools.full : 0],
+    ["Conversation",    c.hist ? c.hist.used + " messages" : "–", c.hist ? c.hist.chars : 0, 0]
+  ];
+  var tbl = '<table class="stats-tbl"><thead><tr><th>data</th><th>sent</th><th>chars</th><th>held back</th></tr></thead><tbody>' +
+    rows.map(function(r){
+      return "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td><td>" + (r[2] ? r[2].toLocaleString("en-IN") : "–") +
+        "</td><td>" + (r[3] ? r[3] : "–") + "</td></tr>";
+    }).join("") + "</tbody></table>";
+  el.innerHTML =
+    '<div class="kpis" style="margin-top:8px">' +
+      '<div class="kpi"><b>' + (c.tokens || Math.round((c.chars || 0) / 4)).toLocaleString("en-IN") + '</b><span>prompt tokens</span></div>' +
+      '<div class="kpi"><b>' + ((c.chars || 0)).toLocaleString("en-IN") + '</b><span>system chars</span></div>' +
+      '<div class="kpi"><b>' + Math.round(u.state / 1024) + ' KB</b><span>stored</span></div>' +
+      '<div class="kpi"><b class="' + (u.ok ? "" : "bad") + '">' + (u.ok ? "saving" : "NOT SAVING") + '</b><span>persistence</span></div>' +
+    '</div>' + tbl +
+    '<p class="mono" style="font-size:10.5px;color:var(--dim);margin-top:8px">Query used to rank: "' +
+      esc(String(c.query || "").slice(0, 90)) + '". Budgets: memory ' + CONTEXT_BUDGET.memChars +
+      ', tasks ' + CONTEXT_BUDGET.taskChars + ', documents ' + CONTEXT_BUDGET.knowChars +
+      ', history ' + CONTEXT_BUDGET.histChars + ' chars.</p>';
 }
 function clearCacheUI(){
   cacheClear();
@@ -1950,8 +2157,18 @@ async function handleUser(text){
     var msgs = [{ role:"system", content: sys }];
     if(toolContext) msgs.push({ role:"system", content: toolContext });
 
-    var history = state.chat.slice(-13, -1);
-    history.forEach(function(h){ msgs.push({ role: h.r === "user" ? "user" : "assistant", content: h.c.slice(0, 3000) }); });
+    /* conversation history: newest first, hard character budget, so a long
+       chat or a huge tool dump cannot crowd out the current question */
+    var picked = [], used = 0;
+    for(var hi = state.chat.length - 2; hi >= 0 && picked.length < 12; hi--){
+      var h = state.chat[hi];
+      var c = String(h.c || "").slice(0, 1200);
+      if(used + c.length > CONTEXT_BUDGET.histChars && picked.length >= 2) break;
+      picked.unshift({ role: h.r === "user" ? "user" : "assistant", content: c });
+      used += c.length;
+    }
+    picked.forEach(function(m){ msgs.push(m); });
+    if(lastContext) lastContext.hist = { used: picked.length, chars: used };
 
     var finalUser = text;
     if(pre === "MORNING BRIEF"){
@@ -2435,7 +2652,15 @@ function importData(ev){
   r.onload = function(){
     try{
       var d = JSON.parse(r.result);
-      for(var k in DEFAULTS){ if(k in d) state[k] = d[k]; }
+      if(!d || typeof d !== "object") throw new Error("not a backup object");
+      for(var k in DEFAULTS){
+        if(!(k in d)) continue;
+        /* only accept the expected shape — a corrupt backup must not break the UI */
+        if((k === "memories" || k === "knowledge" || k === "tasks" || k === "chat" || k === "toolsOff") && !Array.isArray(d[k])) continue;
+        if(k === "brains" && (typeof d[k] !== "object" || !d[k])) continue;
+        state[k] = d[k];
+      }
+      toolCache = {}; toolStats = {};      /* never serve data cached from another state */
       PROVIDERS.forEach(function(p){ if(!state.brains[p.id]) state.brains[p.id] = { key:"", model:"" }; });
       save(); fillSettings(); updateHeader(); updateStats();
       toast("✅ Backup restored");
@@ -2446,6 +2671,8 @@ function importData(ev){
 function wipeAll(){
   if(!confirm("Delete EVERYTHING — memories, knowledge, tasks, chats, keys? This cannot be undone.")) return;
   store.removeItem("jarvis_msk_v1");
+  try{ store.removeItem(TOOL_CACHE_KEY); }catch(e){}
+  toolCache = {}; toolStats = {}; toolLog = []; cacheStats = { hits:0, misses:0 };
   state = load();
   $("messages").innerHTML = ""; welcome(); updateHeader(); updateStats();
   toast("All data wiped");
@@ -2517,7 +2744,10 @@ window.JARVIS = {
   runDiagnostic: runDiagnostic, renderStats: renderStats, saveHomeCity: saveHomeCity,
   cacheClear: cacheClear, cacheGet: cacheGet, cachePut: cachePut, cacheHitRate: cacheHitRate,
   get toolStats(){ return toolStats; }, get toolCache(){ return toolCache; },
-  get cacheStats(){ return cacheStats; }, TOOL_TTL: TOOL_TTL, ageStr: ageStr, isTransient: isTransient
+  get cacheStats(){ return cacheStats; }, TOOL_TTL: TOOL_TTL, ageStr: ageStr, isTransient: isTransient,
+  bm25: bm25, pickByRelevance: pickByRelevance, renderContext: renderContext,
+  get lastContext(){ return lastContext; }, CONTEXT_BUDGET: CONTEXT_BUDGET,
+  retrieveKnowledge: retrieveKnowledge, storageUse: storageUse
 };
 
 if("serviceWorker" in navigator && location.protocol.indexOf("http") === 0){

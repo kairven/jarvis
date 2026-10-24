@@ -172,7 +172,7 @@ async function suiteChat() {
     return { ok: false, status: 404, json: async () => ({}), text: async () => "" };
   };
 
-  assert("script ran to completion", !!w.JARVIS && w.TOOLS.length === 21);
+  assert("script ran to completion", !!w.JARVIS && w.TOOLS.length === 22);
   assert("no boot fault banner", !d.getElementById("bootfault"));
   let sp = "";
   try { sp = w.systemPrompt({ query: "x" }); } catch (e) { sp = "THREW " + e.message; }
@@ -192,9 +192,110 @@ async function suiteChat() {
   assert("no uncaught page errors", errs.length === 0, errs.slice(0, 2).join(" | "));
 }
 
+
+/* ============ SUITE 3 — context engine (which data is worth sending) ============ */
+async function suiteContext() {
+  console.log("\n── SUITE 3 · context engine (BM25 + budgets) ──");
+  const { w } = await boot();
+  const J = w.JARVIS;
+  const st = J.state;
+
+  st.memories = Array.from({ length: 60 }, (_, i) => ({ t: Date.now() - i * 86400e3,
+    text: "Fact " + i + ": runs a small business in Kanpur, prefers concise answers, likes tea." }));
+  st.tasks = Array.from({ length: 15 }, (_, i) => ({ t: Date.now(), done: false,
+    text: "Commitment " + i + ": follow up with the supplier about the invoice" }));
+  st.knowledge = Array.from({ length: 5 }, (_, i) => ({ t: Date.now(), title: "Doc " + i,
+    text: "Lorem ipsum business plan content. ".repeat(400) }));
+  st.board = true;
+
+  /* BM25 sanity */
+  const scores = J.bm25("weather kanpur", ["the weather is hot", "business plan", "kanpur weather today"]);
+  assert("BM25 ranks the relevant doc first", scores[2] > scores[0] && scores[0] > scores[1], JSON.stringify(scores));
+
+  /* budgets are enforced */
+  const big = w.systemPrompt({ query: "what is the weather in kanpur" });
+  const small = w.systemPrompt({ query: "hello" });
+  assert("a greeting costs fewer tokens than a research question", small.length < big.length, small.length + " vs " + big.length);
+  assert("prompt no longer carries all 60 facts", J.lastContext.mem.used < 60, "used " + J.lastContext.mem.used);
+  assert("memory block respects its char budget", J.lastContext.mem.chars <= J.CONTEXT_BUDGET.memChars, J.lastContext.mem.chars);
+  assert("task block respects its char budget", J.lastContext.task.chars <= J.CONTEXT_BUDGET.taskChars, J.lastContext.task.chars);
+  assert("held-back facts are reported", J.lastContext.mem.dropped > 0, J.lastContext.mem.dropped);
+
+  /* progressive disclosure */
+  assert("only a few tools are described in full", J.lastContext.tools.full <= J.CONTEXT_BUDGET.toolFull, J.lastContext.tools.full);
+  assert("all tools are still listed by id", J.lastContext.tools.ids === J.TOOLS.filter(t => (st.toolsOff||[]).indexOf(t.id) === -1).length);
+  assert("menu lists every tool id", /Menu: .*calc/.test(big) && /Menu: .*device/.test(big));
+  const cats = await J.runTool("tools", "");
+  assert("the catalogue escape hatch works", cats.ok && /LIVE TOOL BELT/.test(cats.out), cats.out.slice(0, 60));
+
+  /* knowledge relevance floor: an unrelated question drags nothing in */
+  const relWeather = J.retrieveKnowledge("what is the weather in kanpur");
+  const relBiz = J.retrieveKnowledge("business plan content");
+  assert("unrelated query retrieves no documents", relWeather === null, JSON.stringify(relWeather));
+  assert("related query retrieves a document", relBiz && relBiz.docs >= 1, JSON.stringify(relBiz).slice(0, 80));
+
+  /* history budget */
+  st.chat = Array.from({ length: 20 }, (_, i) => ({ r: i % 2 ? "jarvis" : "user", c: "x".repeat(1200), t: Date.now() }));
+  const before = st.chat.length;
+  let captured = null;
+  w.complete = async (msgs) => { captured = msgs; return "ok"; };
+  await w.handleUser("and now?");
+  const histMsgs = captured.filter(m => m.role === "user" || m.role === "assistant");
+  assert("history is capped by characters, not message count", histMsgs.length < before, histMsgs.length + " msgs");
+  assert("history stays inside its budget", J.lastContext.hist.chars <= J.CONTEXT_BUDGET.histChars + 1200, J.lastContext.hist.chars);
+
+  /* the inspector renders the decision */
+  J.renderContext();
+  const panel = w.document.getElementById("ctx-panel").textContent;
+  assert("inspector shows held-back counts", /held back/i.test(panel) && /prompt tokens/i.test(panel), panel.slice(0, 100));
+  assert("inspector shows persistence state", /saving|NOT SAVING/.test(panel));
+}
+
+/* ============ SUITE 4 — audit fixes ============ */
+async function suiteAuditFixes() {
+  console.log("\n── SUITE 4 · audit fixes ──");
+  const { w, d } = await boot();
+  const J = w.JARVIS;
+
+  /* save() must report failure instead of swallowing it.
+     NB: jsdom's Storage is a Proxy — assigning localStorage.setItem writes an
+     item, it does not replace the method. Patch the prototype. */
+  const realSet = w.Storage.prototype.setItem;
+  w.Storage.prototype.setItem = function(){ throw new Error("QuotaExceededError"); };
+  J.state.memories.push({ text: "test", t: Date.now() });
+  const saveFn = w.eval("save");
+  try { saveFn(); } catch (e) {}
+  const u = J.storageUse();
+  assert("failed save is detected", u.ok === false, JSON.stringify(u));
+  w.Storage.prototype.setItem = realSet;
+  const u2 = (saveFn(), J.storageUse());
+  assert("save recovers once storage works again", u2.ok === true, JSON.stringify(u2));
+
+  /* wipe clears cached tool data too */
+  J.cachePut("weather", "Delhi", "old cached weather");
+  assert("cache populated before wipe", Object.keys(J.toolCache).length > 0);
+  w.confirm = () => true;
+  w.eval("wipeAll")();
+  assert("wipe clears the tool cache", Object.keys(J.toolCache).length === 0, JSON.stringify(Object.keys(J.toolCache)));
+
+  /* a corrupt backup must not break the UI */
+  const file = new w.File([JSON.stringify({ memories: null, tasks: "nope", chat: 5 })], "bad.json", { type: "application/json" });
+  const input = d.getElementById("import-file");
+  Object.defineProperty(input, "files", { value: [file], configurable: true });
+  w.eval("importData")({ target: input });
+  await new Promise(r => setTimeout(r, 200));
+  assert("corrupt backup rejected, state stays valid", Array.isArray(J.state.memories) && Array.isArray(J.state.tasks));
+
+  /* dead code removed */
+  const js = w.document.querySelector("script").textContent;
+  assert("unused peek() helper is gone", !/function peek\(/.test(js));
+}
+
 (async () => {
   await suitePerf();
   await suiteChat();
+  await suiteContext();
+  await suiteAuditFixes();
   finish();
 })().catch((e) => {
   console.log("FAIL · suite crashed: " + (e && e.stack ? e.stack : e));
