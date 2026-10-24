@@ -62,6 +62,36 @@ You can switch any tool off, and you can always call one directly:
 
 ---
 
+## 🧩 Which data is worth sending (context engineering)
+
+Inspired by **[ratel-ai/ratel](https://github.com/ratel-ai/ratel)** — *"your agent is paying
+for tools it never uses"*. The short version: **send the smallest set of high-signal data,
+not everything you own.**
+
+| Data | Rule | Budget |
+|---|---|---|
+| Memory facts | top 12 by **BM25** relevance to your question; the 6 freshest if nothing matches | 1,500 chars |
+| Open commitments | top 6 by relevance, trimmed to 110 chars each | 700 chars |
+| Your documents | BM25 with a **relevance floor** — an unrelated question pulls in nothing | 2,200 chars |
+| Tool descriptions | **progressive disclosure**: 6 described in full per turn, all 22 listed by id | 6 tools |
+| Conversation | newest-first until the budget is spent, not "last 13 messages" | 5,000 chars |
+
+Measured on a realistic long-term user (60 facts, 15 tasks, 5 docs):
+
+```
+before:  3,224 tokens of fixed overhead every turn
+after :  1,327 for "what's the weather in Kanpur"   (−59%)
+         1,071 for "hello"                          (−67%)
+```
+
+Nothing is lost: the full catalogue is one `[TOOL: tools]` call away, and the
+**🧩 WHAT I SEND TO THE AI** panel in the TOOLS tab shows exactly what was included,
+what was held back, how many tokens it cost, and whether storage is actually saving.
+That panel is the honest answer to *"which data is useful when I use the AI"* — for
+*your* data, on *your* device.
+
+---
+
 ## Open-source repos this is built on
 
 **Already integrated (running in your browser):**
@@ -74,6 +104,8 @@ You can switch any tool off, and you can always call one directly:
 | [jina-ai/reader](https://github.com/jina-ai/reader) | `/read` — any URL as clean text |
 | [HackerNews/API](https://github.com/HackerNews/API) | tech news |
 | [meetDeveloper/freeDictionaryAPI](https://github.com/meetDeveloper/freeDictionaryAPI) | dictionary |
+| [ratel-ai/ratel](https://github.com/ratel-ai/ratel) | the context-selection design: progressive disclosure, BM25, no vector DB |
+| [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) | the audit lens: every finding needs a concrete case; lean beats clever |
 
 **The honest upgrade path (needs a computer or a server, not a browser tab):**
 
