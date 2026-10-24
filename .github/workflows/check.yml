@@ -14,10 +14,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Install checker dependencies
-        run: npm install --no-save acorn acorn-walk
+      - name: Install check/test dependencies
+        run: npm install --no-save acorn acorn-walk jsdom
       - name: Lint the inline app script (strict-mode hazards, syntax, wiring)
         run: node tools/check.js index.html
+      - name: Behavioural suite (cache, retry, degradation, telemetry, chat)
+        run: node tools/test.js
       - name: Validate service worker syntax
         run: node --check sw.js
       - name: Validate manifest is valid JSON

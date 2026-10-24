@@ -106,6 +106,20 @@ limits are in **[TOOLS.md](TOOLS.md)**.
 Also new: **drop a PDF or text file into KNOWLEDGE** and it is extracted on your device
 (Mozilla pdf.js) and becomes part of JARVIS's searchable memory.
 
+### ⚡ v4.1 — speed and resilience
+
+| Feature | Effect |
+|---|---|
+| **TTL cache** (persistent) | repeat questions answer instantly; crypto 2 min, weather 10 min, wiki/papers 1–7 days. Side effects (timer, remember, task, device, random) are never cached |
+| **Retry with back-off** | one automatic retry on network/429/5xx faults — skipped when you are known-offline |
+| **Graceful degradation** | if a live fetch fails, the last cached value is shown **labelled as stale with its age**, never an invented number |
+| **🩺 Diagnostic** | TOOLS → RUN FULL DIAGNOSTIC reports pass/fail, avg + p95 latency and the slowest tool |
+| **Telemetry** | per-tool calls, success %, cache hits and average latency, plus a session KPI strip |
+| **HOME CITY** | `/weather` and `/time` default to your city instead of asking |
+
+Full reasoning — including which parts of the usual "supercharge" advice do *not* apply to a
+single-file PWA — is in **[SUPERCHARGE.md](SUPERCHARGE.md)**.
+
 ---
 
 **Auto-Learn** (default ON): after every conversation, JARVIS silently extracts durable facts about you and saves them. **This is its self-training** — it gets smarter about your life every single day, and you can audit everything in the **🧠 MIND** tab.
