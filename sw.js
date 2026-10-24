@@ -1,5 +1,5 @@
 /* J.A.R.V.I.S. MK-II — service worker: makes the app installable & offline-capable */
-var CACHE = "jarvis-mk2-v4";
+var CACHE = "jarvis-mk2-v5";
 var ASSETS = ["./", "./index.html", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-180.png"];
 
 self.addEventListener("install", function (e) {
