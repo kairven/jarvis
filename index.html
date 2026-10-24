@@ -278,7 +278,7 @@
     <div class="composer">
       <button class="iconbtn" id="mic-btn" onclick="toggleMic()" title="Voice input" style="display:none">🎙️</button>
       <button class="iconbtn" id="wake-btn" onclick="toggleWake()" title="Wake word" style="display:none">💤</button>
-      <textarea id="input" rows="1" placeholder="Talk to J.A.R.V.I.S... (try: /search, /imagine, /brief, /task, remember...)" autofocus></textarea>
+      <textarea id="input" rows="1" placeholder="Talk to J.A.R.V.I.S... tap 🎙️ to speak, or 💤 and say &quot;hey jarvis&quot;" autofocus></textarea>
       <button class="iconbtn" onclick="sendFromInput()" title="Send">➤</button>
     </div>
   </section>
@@ -612,8 +612,8 @@ window.addEventListener("unhandledrejection", function(ev){
 });
 
 /* ================================================================
-   J.A.R.V.I.S. MK-II v4.3 — single-folder personal AI
-   8 free LLM brains + 21-tool agent loop (cached, retried, degraded)
+   J.A.R.V.I.S. MK-II v4.4 — single-folder personal AI
+   8 free LLM brains + 22-tool agent loop (cached, retried, degraded)
    + image engine + PWA
    Mind: localStorage on your device — nothing leaves you
    ================================================================ */
@@ -807,13 +807,30 @@ function clearChat(){
   state.chat = []; save(); $("messages").innerHTML = ""; welcome(); updateStats();
 }
 function welcome(){
-  renderMsg("jarvis",
-"Good day, sir. **J.A.R.V.I.S. MK-II v4.3 online.** All systems nominal.\n\nI am your personal AI — my mind lives **on your device**, my brains in the **free cloud**. The more we talk, the more I learn about you.\n\n| Command | What I do |\n|---|---|\n| `/search quantum computing` | I search the web live and structure the findings |\n| `/imagine a neon cyberpunk arc reactor` | I generate an AI image (Flux — free) |\n| `/brief` | Your daily operator brief |\n| `/status` | System diagnostic |\n| `/task call bank tomorrow` | Operator mode: I track your commitments |\n| `remember I have exams in December` | I store it in my Mind forever |\n| `/security audit my phone` | Defensive security guidance |\n| `/run volume up` | Control your device \u2014 with the free agent running |\n| `/weather Kanpur` | Live weather + 3-day forecast |\n| `/calc 18% of 4500` | Exact math, not a guess |\n| `/tools` | See all 21 live tools |\n\n**Zero setup:** I run on my FREE brain right now — no account, no key. I carry **8 free brains** with auto-switching, an **image engine**, and a **21-tool belt** I summon myself mid-thought (weather, prices, news, math, GitHub, papers, page reader…). Connect more brains in ⚙️ **SETUP** for superintelligence mode. Now say *\"JARVIS, introduce yourself\"* — or try `/weather Kanpur`, `/calc 18% of 4500`, or `/tools`.");
+  var intro = "Good day, sir. **J.A.R.V.I.S. MK-II v4.4 online.** All systems nominal."
+    + "\n\nI am your personal AI: my mind lives **on your device**, my brains in the **free cloud**. The more we talk, the more I learn about you."
+    + "\n\n**Say it, don't type it.** Tap **\ud83d\udcf4** and say *\"hey jarvis, what's the weather?\"*, or **\ud83c\udf99\ufe0f** for one phrase. It needs Chrome or Edge over https:// or localhost; `/voice` tells you if something is blocking the mic."
+    + "\n\n| Command | What I do |\n|---|---|";
+  intro += "\n| `" + '/search quantum computing' + "` | " + 'I search the web live and structure the findings' + " |";
+  intro += "\n| `" + '/imagine a neon cyberpunk arc reactor' + "` | " + 'I generate an AI image (Flux, free)' + " |";
+  intro += "\n| `" + '/brief' + "` | " + 'Your daily operator brief' + " |";
+  intro += "\n| `" + '/status' + "` | " + 'System diagnostic' + " |";
+  intro += "\n| `" + '/task call bank tomorrow' + "` | " + 'Operator mode: I track your commitments' + " |";
+  intro += "\n| `" + 'remember I have exams in December' + "` | " + 'I store it in my Mind forever' + " |";
+  intro += "\n| `" + '/security audit my phone' + "` | " + 'Defensive security guidance' + " |";
+  intro += "\n| `" + '/run volume up' + "` | " + 'Control your device, with the free agent running' + " |";
+  intro += "\n| `" + '/weather Kanpur' + "` | " + 'Live weather + 3-day forecast' + " |";
+  intro += "\n| `" + '/calc 18% of 4500' + "` | " + 'Exact math, not a guess' + " |";
+  intro += "\n| `" + '/tools' + "` | " + 'See all 22 live tools' + " |";
+  intro += "\n| `" + '/skills' + "` | " + '18 procedures: debug, study, money, negotiate...' + " |";
+  intro += "\n| `" + '/voice' + "` | " + 'Voice diagnostics: shows what is blocking the mic' + " |";
+  intro += "\n\n**Zero setup:** the FREE brain works right now, no account, no key. I carry **8 free brains** with auto-switching, a **22-tool belt**, **18 skills** and **12 reference notes**, and I fetch live numbers before I answer instead of guessing."
+    + "\n\nConnect more brains in \u2699\ufe0f **SETUP** for superintelligence mode. Try `/weather Kanpur`, `/calc 18% of 4500`, or `/tools`.";
+  renderMsg("jarvis", intro);
 }
-
 /* ---------- THE BUILT-IN MASTER PROMPT (polished prompt engineering, v3) ---------- */
 function builtinCore(){
-  return "You are J.A.R.V.I.S. MK-II (v4.3) — the personal AI system of Mohd Sameer Khan. Persona: calm, precise, loyal, quietly witty like Jarvis in Iron Man; address him as \"sir\" naturally, never overdone.\n\n" +
+  return "You are J.A.R.V.I.S. MK-II (v4.4) — the personal AI system of Mohd Sameer Khan. Persona: calm, precise, loyal, quietly witty like Jarvis in Iron Man; address him as \"sir\" naturally, never overdone.\n\n" +
   "PRIME DIRECTIVES:\n" +
   "1. Be USEFUL: every answer is actionable and specific — markdown structure, numbered steps, tables when they help. Zero fluff.\n" +
   "2. Be HONEST: never invent facts, sources, or numbers. If uncertain, say so and explain how to verify.\n" +
