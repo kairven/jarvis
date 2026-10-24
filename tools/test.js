@@ -507,9 +507,105 @@ async function suiteKairven() {
   assert("welcome advertises /leak", /\/leak/.test(wl));
   assert("welcome advertises /proposal", /\/proposal/.test(wl));
   assert("welcome counts 22 skills", /22 skills/.test(wl));
-  assert("welcome reports the current version", /v4\.5/.test(wl), wl.slice(0, 80));
+  assert("welcome reports the current version", /v4\.6/.test(wl), wl.slice(0, 80));
+  assert("welcome advertises /brain", /\/brain/.test(wl));
+  assert("welcome advertises /accent", /\/accent/.test(wl));
   assert("welcome does not claim 18 skills", !/18 skills/.test(wl));
 }
+
+/* ============ SUITE 8 — brain recovery, self-knowledge, accents ============ */
+async function suiteRepair() {
+  console.log("\n── SUITE 8 · brain / self-knowledge / accent ──");
+  const { w, d } = await boot();
+  const J = w.JARVIS;
+
+  /* --- the free brain points at the endpoint that still exists --- */
+  const poll = J.PROVIDERS.find((p) => p.id === "pollinations");
+  assert("free brain uses the current /v1/chat/completions path", /\/v1\/chat\/completions$/.test(poll.url), poll.url);
+  assert("free brain names a model the tier still lists", poll.model === "openai-fast", poll.model);
+  assert("free brain is no longer on the deprecated /openai path", !/\/openai$/.test(poll.url), poll.url);
+
+  /* --- the GET fallback cannot 404 on URL length any more --- */
+  const big = [{ role: "system", content: "x".repeat(4000) }, { role: "user", content: "y".repeat(4000) }];
+  const cp = J.compactPrompt(big, 900);
+  assert("compact fallback prompt is capped", cp.length <= 900, cp.length);
+  assert("compact fallback strips URLs", !/https?:\/\//.test(J.compactPrompt([{ role: "user", content: "see https://example.com/a/very/long/url" }], 900)));
+
+  let tried = [];
+  w.fetch = async (u) => { tried.push(String(u));
+    if (/^https:\/\/text\.pollinations\.ai\/(?!openai|v1)/.test(String(u))) return { ok: true, text: async () => "recovered answer", json: async () => ({}) };
+    return { ok: false, status: 404, text: async () => "nope", json: async () => ({}) };
+  };
+  const got = await J.pollinationsFallback([{ role: "user", content: "Question" }], null);
+  assert("GET fallback recovers a real answer", got === "recovered answer", got);
+  assert("GET fallback no longer appends a dead ?model=", tried.every((u) => !/\?model=/.test(u)), tried[0]);
+
+  /* --- malformed payloads now explain themselves --- */
+  w.fetch = async () => ({ ok: true, status: 200, text: async () => "<html>gateway error</html>", json: async () => null });
+  let msg = "";
+  try { await J.postJSON("https://text.pollinations.ai/v1/chat/completions", {}, { messages: [] }); }
+  catch (e) { msg = e.message; }
+  assert("malformed response reports the host", /text\.pollinations\.ai/.test(msg), msg);
+  assert("malformed response quotes what came back", /gateway error/.test(msg), msg);
+
+  /* --- the exact failure from the transcript, answered honestly --- */
+  const noRes = J.noLiveResults("kairven");
+  assert("no-result reply names the query", /kairven/.test(noRes));
+  assert("no-result reply refuses to guess", /will not guess/i.test(noRes), noRes.slice(0, 80));
+  assert("no-result reply offers /read", /\/read/.test(noRes));
+
+  /* --- self-knowledge: the questions that used to be answered by a brain --- */
+  const selfQ = J.selfAnswer("I want you to when I say hey Jarvis you wake up");
+  assert("wake-word request is answered by the app", /Wake word/i.test(selfQ), selfQ.slice(0, 60));
+  assert("wake-word answer points at the 💤 button", /💤/.test(selfQ));
+  const voiceQ = J.selfAnswer("why is your voice is not working");
+  assert("voice complaint is answered by the app", /Web Speech/i.test(voiceQ), voiceQ.slice(0, 60));
+  assert("voice answer refuses the PyAudio myth", /no PyAudio|not a Python console/i.test(voiceQ));
+  const active = J.selfAnswer("active voice command");
+  assert("\"active voice command\" no longer reaches the brain", /Voice|Speech/i.test(active), active.slice(0, 60));
+  const brainQ = J.selfAnswer("check brain is working or not");
+  assert("brain check is answered with a real table", /BRAIN STATUS/.test(brainQ), brainQ.slice(0, 60));
+  const failQ = J.selfAnswer("why system fail");
+  assert("\"why system fail\" explains the actual fault", /WHY IT FAILED/.test(failQ), failQ.slice(0, 60));
+
+  /* --- and it stays out of the way of real questions --- */
+  assert("a normal question is not hijacked", J.selfAnswer("what is the weather in kanpur") === "");
+  assert("a wake-word command is not hijacked", J.selfAnswer("hey jarvis what is the weather") === "");
+  assert("a business question is not hijacked", J.selfAnswer("how do I price my leak audit for a clinic") === "");
+
+  /* --- accents --- */
+  assert("five accents are offered", Object.keys(J.ACCENTS).length === 5);
+  assert("default accent is British (he asked for a different accent)", J.accentKey() === "british", J.accentKey());
+  J.setAccent("indian");
+  assert("setAccent changes the accent", J.accentKey() === "indian");
+  assert("setAccent moves voice recognition too", J.state.voiceLang === "en-IN", J.state.voiceLang);
+  J.setAccent("american");
+  assert("setAccent is re-runnable", J.state.speakLang === "en-US", J.state.speakLang);
+  assert("an unknown accent is refused", J.setAccent("martian") === false);
+  const acc = J.accentStatus();
+  assert("accent status names the current accent", /American English/.test(acc), acc.slice(0, 80));
+  assert("accent status explains how to change it", /\/accent british/.test(acc));
+
+  /* --- /accent and /brain and /retry from chat --- */
+  const say = async (t) => { await J.slashTool(t); return d.getElementById("messages").textContent; };
+  let out = await say("/accent british");
+  assert("/accent works from chat", /British English/.test(out.slice(-900)), out.slice(-160));
+  out = await say("/accent list");
+  assert("/accent list explains an empty voice list instead of crashing", /voices|voice/i.test(out.slice(-300)));
+  out = await say("/brain");
+  assert("/brain prints the status table", /BRAIN STATUS/.test(out.slice(-600)));
+  assert("/brain shows the free brain", /Pollinations/.test(out.slice(-600)));
+
+  /* --- /retry replays the last real question --- */
+  let calls = 0;
+  J.state.autoLearn = false;               /* isolate the chat call from background learning */
+  w.complete = async () => { calls++; return "retried"; };
+  await J.handleUser("hello there jarvis");
+  const afterFirst = calls;
+  await J.slashTool("/retry");
+  assert("/retry actually re-sends the previous question", calls === afterFirst + 1, calls + " vs " + afterFirst);
+}
+
 
 (async () => {
   await suitePerf();
@@ -519,6 +615,7 @@ async function suiteKairven() {
   await suiteSkills();
   await suiteVoice();
   await suiteKairven();
+  await suiteRepair();
   finish();
 })().catch((e) => {
   console.log("FAIL · suite crashed: " + (e && e.stack ? e.stack : e));

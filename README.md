@@ -158,6 +158,64 @@ per turn, and *"what's the weather in Kanpur"* injects **no skill at all**.
 
 Details, honest limits and sizes: **[SKILLS.md](SKILLS.md)**.
 
+### 🔧 v4.6 — the free brain that stopped answering, fixed at the root
+
+Three separate failures, three root causes. None of them were "the AI is bad".
+
+**1. `⚠️ System fault: FREE BRAIN (Pollinations): empty/malformed response`**
+
+Pollinations moved to a unified API (`gen.pollinations.ai`) and put the old one in
+maintenance mode. The app was calling `text.pollinations.ai/openai`, which now answers
+with a payload that has no `choices` — so the parser reported *"empty/malformed"* and
+the GET fallback, which encoded a 2,400-character prompt into the URL and appended
+a `?model=` that no longer exists, came back **404**.
+
+| Before | After |
+|---|---|
+| `POST /openai` (deprecated) | `POST /v1/chat/completions` (current) |
+| model `openai` | model `openai-fast` — the only one the free tier still lists |
+| fallback URL ≈ 2,400 chars → 404 | capped at 900 chars, no `model` param |
+| `empty/malformed response` | the provider's own words, quoted, plus a host name |
+| "System fault" dump | a diagnosis + `/retry`, `/brain`, and what to do next |
+
+It also now remembers **what each brain actually said**, per brain, with a timestamp —
+`/brain` reports that instead of guessing.
+
+**2. "search about kairven" → "Kairven is a typical fantasy name"**
+
+The search path went through one proxy (`r.jina.ai`), which rate-limits anonymous
+traffic. It failed, and the model filled the silence with a confident invention.
+
+Now: three independent proxy routes with fail-over, the reason each one failed is kept,
+and if **nothing** comes back the app answers instead of the model —
+*"No live results for 'kairven' — and I will not guess what it is."* The master prompt
+gained one hard rule: **no result is a result.**
+
+**3. "when I say hey jarvis you wake up" → "install PyAudio and a USB microphone"**
+
+The cloud brain was asked about the browser it was running inside. It cannot see that,
+so it invented a Python console app and a tutorial to match — while the real app already
+had a working wake word one button away.
+
+Questions about JARVIS itself are now answered **by JARVIS**, before any brain is called:
+
+| You say | The app answers, not the model |
+|---|---|
+| "when I say hey jarvis you wake up" | the exact 💤 steps and the five reasons it fails |
+| "active voice command" | the browser's Web Speech API — no installs, ever |
+| "why is your voice not working" | a live check: engine, https, iframe, permission |
+| "check brain is working or not" | `/brain` — a real table of every provider |
+| "why system fail" | the actual last error, quoted |
+| "I don't like your accent" | `/accent` — five accents, applied immediately |
+
+**New commands:** `/accent british|indian|american|australian|neutral` · `/accent list`
+(every voice the device actually has) · `/brain` · `/retry`. There is also an **ACCENT**
+dropdown in ⚙️ SETUP, and the accent sets speech recognition to match.
+
+**168 assertions across 8 suites**, including the exact six sentences from the failure
+report above. `sw.js` → `jarvis-mk2-v13` — **hard-refresh once** (Ctrl/Cmd-Shift-R) if the
+old build is still cached.
+
 ### 🌍 v4.5 — the international client kit
 
 The business question stopped being *"what can the AI do"* and became *"how does it earn"*.
