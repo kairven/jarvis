@@ -2,7 +2,7 @@
    Strategy: NETWORK-FIRST for the app shell (so a fix or update lands on the very
    next load), CACHE-FIRST for static assets (icons, manifest) for instant paint.
    AI API calls are never touched — they always go straight to the network. */
-var CACHE = "jarvis-mk2-v8";
+var CACHE = "jarvis-mk2-v9";
 var SHELL = ["./", "./index.html"];
 var ASSETS = ["./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-180.png"];
 

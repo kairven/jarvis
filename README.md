@@ -136,6 +136,28 @@ in, what was held back, tokens spent, and whether your data is actually being sa
 A full code audit (4 real bugs found and fixed, including silent data loss when browser
 storage fills up) is in **[AUDIT.md](AUDIT.md)**.
 
+### 🎓 v4.3 — taught: 18 skills + 12 reference notes on transformer models
+
+I cannot copy a model's weights into a browser file — nobody can. What transfers is
+**procedure and reference knowledge, delivered when relevant**, and that is what this adds.
+
+| | What |
+|---|---|
+| **18 skills** | debugging, code review, architecture, testing, writing, studying, business, money, marketing, negotiation, decisions, security, prompt engineering, learning AI, research, interviews, explaining, data analysis — each a *procedure*, injected only when your message matches |
+| **12 teachings** | how transformers, tokens, embeddings, RAG, fine-tuning, agents, evaluation, hallucination, local models, latency, language fairness and the AI learning path actually work |
+| **Teach it yourself** | `/teach <rule>` — your knowledge, retrieved when relevant, deletable any time |
+
+Costs nothing until needed: all 18 skills are ~9 KB on disk but at most **1,500 characters**
+per turn, and *"what's the weather in Kanpur"* injects **no skill at all**.
+
+```
+/skills      list everything
+/skill debug force one
+/teach ...   your own rules
+```
+
+Details, honest limits and sizes: **[SKILLS.md](SKILLS.md)**.
+
 ---
 
 **Auto-Learn** (default ON): after every conversation, JARVIS silently extracts durable facts about you and saves them. **This is its self-training** — it gets smarter about your life every single day, and you can audit everything in the **🧠 MIND** tab.
