@@ -565,6 +565,11 @@
           </select>
           <button class="btn small" onclick="testVoice()">🎙️ TEST VOICE</button>
         </div>
+        <div class="row" style="align-items:center;gap:8px">
+          <label class="mono" style="font-size:11px;color:var(--dim)">ACCENT</label>
+          <select id="set-accent" class="field" style="max-width:210px;padding:6px" onchange="setAccent(this.value)"></select>
+          <span class="mono" style="font-size:11px;color:var(--dim)">how JARVIS sounds — /accent list shows every installed voice</span>
+        </div>
         <p class="mono" id="voice-help" style="font-size:11px;color:var(--dim);line-height:1.6;margin-top:6px"></p>
       </div>
 
@@ -612,7 +617,7 @@ window.addEventListener("unhandledrejection", function(ev){
 });
 
 /* ================================================================
-   J.A.R.V.I.S. MK-II v4.5 — single-folder personal AI
+   J.A.R.V.I.S. MK-II v4.6 — single-folder personal AI
    8 free LLM brains + 22-tool agent loop (cached, retried, degraded)
    + image engine + PWA
    Mind: localStorage on your device — nothing leaves you
@@ -633,12 +638,12 @@ var DEFAULTS = {
   temp:0.6, route:"auto", board:true, autoLearn:true, voiceOut:false, masterPrompt:"", agentUrl:"", agentToken:"",
   brains:{}, memories:[], knowledge:[], tasks:[], chat:[], toolsOff:[], homeCity:"Kanpur",
   skillsOff:[], teachingsOff:[], lessons:[],
-  voiceAutoSend:true, voiceLang:"en-IN", wakeOnBoot:false
+  voiceAutoSend:true, voiceLang:"en-IN", accent:"british", speakLang:"en-GB", wakeOnBoot:false
 };
 
 /* ---------- 8 FREE LLM BRAINS — registry ---------- */
 var PROVIDERS = [
-  { id:"pollinations", name:"FREE BRAIN (Pollinations)", short:"FREE", url:"https://text.pollinations.ai/openai", model:"openai", keyless:true, note:"Zero signup, always on. Also powers the image engine.", signup:"" },
+  { id:"pollinations", name:"FREE BRAIN (Pollinations)", short:"FREE", url:"https://text.pollinations.ai/v1/chat/completions", model:"openai-fast", keyless:true, note:"Zero signup. Only model left on the free tier is openai-fast; legacy /openai is deprecated. Also powers the image engine.", signup:"" },
   { id:"gemini", name:"Google Gemini", short:"GEMINI", url:"https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", model:"gemini-flash-lite-latest", note:"Free tier ~250 req/day · aistudio.google.com · default = flash-lite alias (stable); try gemini-3.8-flash when demand is low", signup:"https://aistudio.google.com/apikey" },
   { id:"groq", name:"Groq", short:"GROQ", url:"https://api.groq.com/openai/v1/chat/completions", model:"llama-3.1-8b-instant", note:"Free, ultrafast · try model: llama-3.3-70b-versatile", signup:"https://console.groq.com/keys" },
   { id:"openrouter", name:"OpenRouter", short:"OR", url:"https://openrouter.ai/api/v1/chat/completions", model:"deepseek/deepseek-chat-v3.1:free", note:"Any model ending :free (50 req/day) · openrouter.ai/models", signup:"https://openrouter.ai/settings/keys" },
@@ -807,7 +812,7 @@ function clearChat(){
   state.chat = []; save(); $("messages").innerHTML = ""; welcome(); updateStats();
 }
 function welcome(){
-  var intro = "Good day, sir. **J.A.R.V.I.S. MK-II v4.5 online.** All systems nominal."
+  var intro = "Good day, sir. **J.A.R.V.I.S. MK-II v4.6 online.** All systems nominal."
     + "\n\nI am your personal AI: my mind lives **on your device**, my brains in the **free cloud**. The more we talk, the more I learn about you."
     + "\n\n**Say it, don't type it.** Tap **\ud83d\udcf4** and say *\"hey jarvis, what's the weather?\"*, or **\ud83c\udf99\ufe0f** for one phrase. It needs Chrome or Edge over https:// or localhost; `/voice` tells you if something is blocking the mic."
     + "\n\n| Command | What I do |\n|---|---|";
@@ -826,13 +831,16 @@ function welcome(){
   intro += "\n| `" + '/leak Smile Dental, Dubai' + "` | " + 'Nine-check public audit of a prospect clinic' + " |";
   intro += "\n| `" + '/proposal Smile Dental | missed calls after 7pm' + "` | " + 'Draft the offer in four currencies' + " |";
   intro += "\n| `" + '/voice' + "` | " + 'Voice diagnostics: shows what is blocking the mic' + " |";
+  intro += "\n| `" + '/brain' + "` | " + 'Which brains are up, and what each one actually said' + " |";
+  intro += "\n| `" + '/accent british' + "` | " + 'Change how I sound: british, indian, american, australian' + " |";
+  intro += "\n| `" + '/retry' + "` | " + 'Re-send the last question after a brain failure' + " |";
   intro += "\n\n**Zero setup:** the FREE brain works right now, no account, no key. I carry **8 free brains** with auto-switching, a **22-tool belt**, **22 skills** and **12 reference notes**, and I fetch live numbers before I answer instead of guessing."
     + "\n\nConnect more brains in \u2699\ufe0f **SETUP** for superintelligence mode. Try `/weather Kanpur`, `/calc 18% of 4500`, or `/tools`.";
   renderMsg("jarvis", intro);
 }
 /* ---------- THE BUILT-IN MASTER PROMPT (polished prompt engineering, v3) ---------- */
 function builtinCore(){
-  return "You are J.A.R.V.I.S. MK-II (v4.5) — the personal AI system of Mohd Sameer Khan. Persona: calm, precise, loyal, quietly witty like Jarvis in Iron Man; address him as \"sir\" naturally, never overdone.\n\n" +
+  return "You are J.A.R.V.I.S. MK-II (v4.6) — the personal AI system of Mohd Sameer Khan. Persona: calm, precise, loyal, quietly witty like Jarvis in Iron Man; address him as \"sir\" naturally, never overdone.\n\n" +
   "PRIME DIRECTIVES:\n" +
   "1. Be USEFUL: every answer is actionable and specific — markdown structure, numbered steps, tables when they help. Zero fluff.\n" +
   "2. Be HONEST: never invent facts, sources, or numbers. If uncertain, say so and explain how to verify.\n" +
@@ -841,7 +849,9 @@ function builtinCore(){
   "5. Match depth to the question: small talk stays short; strategy gets full structure.\n\n" +
   "TOOLS: you have a live tool belt (listed below the directives) — real, working tools, not suggestions. Whenever an answer depends on live or exact data (prices, weather, time, news, a specific repo, paper, word, page, calculation), USE A TOOL INSTEAD OF GUESSING.\n" +
   "To use one, write it on its own line: [TOOL: id arguments]. The app executes it and hands you the real result; then you answer.\n" +
-  "NEVER invent a tool result, never show a [TOOL: ...] line in your final answer, and never call the same tool twice for the same information.\n";
+  "NEVER invent a tool result, never show a [TOOL: ...] line in your final answer, and never call the same tool twice for the same information.\n" +
+  "ABOUT YOURSELF: you run as a single web page in a browser, with voice from the Web Speech API (Chrome/Edge, https, own tab). You are not a console, a terminal, or a Python program. NEVER tell him to install Python, PyAudio, Whisper, vosk or a USB microphone for your voice, and never invent a menu, button or setting that is not in this app. Questions about your own voice, wake word, accent, brains or status are answered by the app before you are called; if one still reaches you, describe only the browser UI.\n" +
+  "NO RESULT IS A RESULT: if a search or tool returns nothing, say plainly that you found nothing and why. NEVER substitute a plausible-sounding description for a name, brand or product you could not verify — answering 'Kairven is a fantasy name' after a failed search is the exact failure to avoid. An honest 'I could not verify this' is always the better answer.\n";
 }
 
 /* ================================================================
@@ -1438,49 +1448,93 @@ function brainConfigured(p){ return !!p.keyless || !!(state.brains[p.id] && stat
 function brainsConfiguredCount(){
   var n = 0; PROVIDERS.forEach(function(p){ if(brainConfigured(p)) n++; }); return n;
 }
+function hostOf(url){ return String(url).replace(/^https?:\/\//, "").split("/")[0]; }
+/* Providers disagree about the envelope: OpenAI uses choices[].message.content,
+   the old Pollinations text route returns {output}, some routers return {response}. */
+function pickContent(d){
+  if(!d) return "";
+  if(d.choices && d.choices[0]){
+    var c = d.choices[0].message && d.choices[0].message.content;
+    if(typeof c === "string" && c.trim()) return c.trim();
+    if(typeof d.choices[0].text === "string" && d.choices[0].text.trim()) return d.choices[0].text.trim();
+  }
+  if(typeof d.output === "string" && d.output.trim()) return d.output.trim();
+  if(typeof d.response === "string" && d.response.trim()) return d.response.trim();
+  return "";
+}
 async function postJSON(url, headers, body){
-  var res = await fetch(url, { method:"POST", headers: headers, body: JSON.stringify(body) });
+  var res;
+  try{
+    res = await fetch(url, { method:"POST", headers: headers, body: JSON.stringify(body) });
+  }catch(e){
+    throw new Error("network blocked reaching " + hostOf(url) + " (offline, or the request was refused)");
+  }
+  var raw = "";
+  try{ raw = await res.text(); }catch(e){}
   var data = null;
-  try{ data = await res.json(); }catch(e){}
+  try{ data = JSON.parse(raw); }catch(e){}
   if(!res.ok){
-    var msg = data && data.error ? (typeof data.error === "string" ? data.error : (data.error.message || JSON.stringify(data.error))) : ("HTTP " + res.status);
+    var msg = data && data.error
+      ? (typeof data.error === "string" ? data.error : (data.error.message || JSON.stringify(data.error)))
+      : ("HTTP " + res.status + (raw ? " — " + raw.slice(0, 100).replace(/\s+/g, " ") : ""));
     throw new Error(msg);
   }
-  if(!data || !data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content){
-    var host = url.replace(/^https?:\/\//, "").split("/")[0];
-    throw new Error("empty/malformed response from " + host);
+  var content = pickContent(data);
+  if(!content){
+    if(data && data.deprecation_notice) throw new Error("endpoint deprecated — " + String(data.deprecation_notice).slice(0, 110));
+    throw new Error("empty/malformed response from " + hostOf(url) + (raw ? " — " + raw.slice(0, 90).replace(/\s+/g, " ") : ""));
   }
-  return data.choices[0].message.content;
+  return content;
 }
-async function pollinationsFallback(messages, origErr){
+/* The old fallback encoded a 2,400-character prompt into the URL path and
+   appended ?model=openai. That produced a very long URL (servers 404 it) and
+   named a model the free tier no longer lists. Both are fixed below: 900 chars,
+   no model parameter, and two shapes tried before giving up. */
+function compactPrompt(messages, max){
   var sys = "", usr = "";
   messages.forEach(function(m){
     if(m.role === "system") sys += m.content + "\n\n";
     else if(m.role === "user") usr += "USER: " + m.content + "\n";
     else usr += "JARVIS: " + m.content + "\n";
   });
-  /* keep it short - long URLs get rejected by servers */
-  var prompt = encodeURIComponent((sys + usr + "\nJARVIS:").slice(-2400));
-  var r = await fetch("https://text.pollinations.ai/" + prompt + "?model=openai");
-  if(!r.ok) throw new Error((origErr && origErr.message ? origErr.message + " | " : "") + "fallback HTTP " + r.status);
-  var t = await r.text();
-  if(!t || t.trim().length < 2) throw (origErr || new Error("empty fallback response"));
-  return t.trim();
+  var head = sys.slice(0, Math.floor(max * 0.5));
+  var tail = usr.slice(-Math.floor(max * 0.5));
+  return (head + "\n" + tail + "\nJARVIS:").replace(/https?:\/\/\S+/g, "(link)").replace(/\s+/g, " ").slice(-max);
 }
+async function pollinationsFallback(messages, origErr){
+  var prompt = encodeURIComponent(compactPrompt(messages, 900));
+  var shapes = ["https://text.pollinations.ai/" + prompt, "https://text.pollinations.ai/" + prompt + "?private=true"];
+  for(var i = 0; i < shapes.length; i++){
+    try{
+      var r = await fetch(shapes[i]);
+      if(!r.ok) continue;
+      var t = (await r.text() || "").trim();
+      if(t.length > 1 && t.charAt(0) !== "<") return t;
+    }catch(e){ /* try the next shape */ }
+  }
+  throw new Error((origErr && origErr.message ? origErr.message : "free brain unreachable"));
+}
+var brainErrors = {};   /* id -> { msg, t } — so /brain can tell the truth */
+var brainOk = {};       /* id -> timestamp of the last successful reply */
 async function brainCall(p, messages){
   var headers = { "Content-Type":"application/json" };
   if(!p.keyless) headers["Authorization"] = "Bearer " + state.brains[p.id].key;
   if(p.id === "openrouter") headers["X-Title"] = "JARVIS MK-II";
-  var body = { model: ((state.brains[p.id].model || "").trim() || p.model), messages: messages, temperature: state.temp };
+  var model = ((state.brains[p.id].model || "").trim() || p.model);
+  var body = { model: model, messages: messages, temperature: state.temp };
   if(p.id === "pollinations") body.private = true; else body.max_tokens = 3072;
-  try{
-    return await postJSON(p.url, headers, body);
-  }catch(e){
-    if(p.id !== "pollinations") throw e;
-    /* FREE-brain hardening: one instant retry, then compact GET fallback */
-    try{ return await postJSON(p.url, headers, body); }catch(e2){ e = e2; }
-    return await pollinationsFallback(messages, e);
+
+  if(p.id !== "pollinations") return await postJSON(p.url, headers, body);
+
+  /* FREE brain: the keyless API has moved twice. Try the current OpenAI path,
+     then the legacy one, then the compact GET. Each shape costs one request. */
+  var shapes = [p.url, "https://text.pollinations.ai/openai"];
+  var last = null;
+  for(var i = 0; i < shapes.length; i++){
+    try{ return await postJSON(shapes[i], headers, body); }
+    catch(e){ last = e; }
   }
+  return await pollinationsFallback(messages, last);
 }
 /* Unified entry: AUTO = fast brains first · DEEP = strongest brains first */
 async function complete(messages){
@@ -1494,8 +1548,13 @@ async function complete(messages){
     try{
       var out = await brainCall(p, messages);
       lastBrainUsed = p.id;
+      brainErrors[p.id] = null; brainOk[p.id] = Date.now();
       return out;
-    }catch(e){ errs.push(p.name + ": " + (e.message || "failed")); }
+    }catch(e){
+      var m = (e && e.message) ? e.message : "failed";
+      brainErrors[p.id] = { msg: m, t: Date.now() };
+      errs.push(p.name + ": " + m);
+    }
   }
   throw new Error(errs.length ? errs.join(" | ") : "no brain configured — open SETUP");
 }
@@ -2454,9 +2513,32 @@ async function ddgSearch(q){
    which answers facts ("what is a giraffe") and returns NOTHING for a normal
    query like "current price of bitcoin" — that is why live stats never worked.
    Now we fetch an actual results page through a CORS-friendly reader. */
+/* One proxy is not a search stack. r.jina.ai rate-limits anonymous traffic and
+   returns 402/429 under load, which used to look like "the search API is down".
+   Three independent routes, tried in order, and the reason each one failed is
+   kept so the UI can say what actually happened. */
+var SEARCH_PROXIES = [
+  function(u){ return "https://r.jina.ai/" + u; },
+  function(u){ return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); },
+  function(u){ return "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u); }
+];
+var lastSearchDiag = "";
+async function proxyText(u){
+  var why = [];
+  for(var i = 0; i < SEARCH_PROXIES.length; i++){
+    try{
+      var t = await getText(SEARCH_PROXIES[i](u), { "Accept":"text/plain" }, 15000);
+      t = t ? String(t) : "";
+      if(t.length > 60 && t.charAt(0) !== "<" && !/^\s*\{?\s*"(error|detail)"/i.test(t)) return t;
+      why.push("route " + (i + 1) + " empty");
+    }catch(e){ why.push("route " + (i + 1) + ": " + String(e.message || "failed").slice(0, 40)); }
+  }
+  lastSearchDiag = why.join(" · ");
+  return "";
+}
 async function ddgHtml(q){
   var target = "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q);
-  var txt = await getText("https://r.jina.ai/" + target, { "Accept":"text/plain" }, 20000);
+  var txt = await proxyText(target);
   if(!txt) return "";
   var lines = String(txt).split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
   var out = [], seen = {};
@@ -2473,11 +2555,26 @@ async function ddgHtml(q){
   return out.join("\n");
 }
 async function doSearch(q){
-  var results = [];
-  try{ var d = await ddgHtml(q); if(d) results.push("Web results (DuckDuckGo, live):\n" + d); }catch(e){}
-  try{ var w = await wikiSearch(q); if(w) results.push("Wikipedia:\n" + w); }catch(e){}
-  try{ var dd = await ddgSearch(q); if(dd) results.push("Quick answer:\n" + dd); }catch(e){}
-  return results.join("\n\n") || "(No live results — the network or the search proxies are unreachable.)";
+  var results = [], why = [];
+  try{ var d = await ddgHtml(q); if(d) results.push("Web results (DuckDuckGo, live):\n" + d); else why.push("DuckDuckGo: " + (lastSearchDiag || "no parseable results")); }catch(e){ why.push("DuckDuckGo: " + (e.message || "failed")); }
+  try{ var w = await wikiSearch(q); if(w) results.push("Wikipedia:\n" + w); else why.push("Wikipedia: no article matched"); }catch(e){ why.push("Wikipedia: " + (e.message || "failed")); }
+  try{ var dd = await ddgSearch(q); if(dd) results.push("Quick answer:\n" + dd); }catch(e){ why.push("DDG instant answers: " + (e.message || "failed")); }
+  lastSearchDiag = why.join(" · ");
+  return results.join("\n\n");       /* "" means genuinely nothing — never a fake sentinel */
+}
+/* Shown instead of letting the model invent a plausible description of a name
+   it has never seen. Saying "I found nothing" is the only honest answer here. */
+function noLiveResults(q){
+  return "🔎 **No live results for \"" + q + "\"** — and I will not guess what it is.\n\n" +
+    "| Source | Result |\n|---|---|\n" +
+    "| DuckDuckGo (3 routes) | " + ((lastSearchDiag.split(" · ")[0] || "nothing parseable").replace(/\|/g, "/")) + " |\n" +
+    "| Wikipedia | no article matched |\n" +
+    "| DDG instant answers | no entry |\n\n" +
+    "**Why this happens:** the search path runs through public CORS proxies. Under load they return 402/429, and a browser cannot call DuckDuckGo directly.\n\n" +
+    "**What works right now:**\n" +
+    "- `/read " + (/^https?:/i.test(q) ? q : "https://kairven.netlify.app") + "` — I fetch the page directly and summarise it\n" +
+    "- Retry in a minute: `/search " + q + "`\n" +
+    "- If you know the URL, give it to me and I will not need a search engine at all.";
 }
 
 /* ================================================================
@@ -2544,6 +2641,132 @@ function statusText(){
     "| Knowledge base | " + state.knowledge.length + " documents |\n" +
     "| Conversation log | " + state.chat.length + " messages |\n" +
     "| Storage | " + (persistent ? "🟢 Persistent (this device)" : "🟡 Temporary (preview mode — download the folder & open in Chrome for full mode)") + " |";
+}
+
+/* ================================================================
+   SELF-KNOWLEDGE — the app answers questions about itself
+   ----------------------------------------------------------------
+   Root cause this fixes. Asked "when I say hey jarvis you wake up",
+   the cloud brain answered as if JARVIS were a console program: it
+   said voice was "outside the scope of my console-based interface"
+   and told him to install PyAudio, Whisper and a USB microphone.
+   Every word of that is wrong for a browser app that already ships a
+   working Web Speech implementation.
+
+   A language model cannot observe the thing it is running inside, so
+   asking it about its own UI can only produce plausible fiction. These
+   questions are therefore answered by the app, deterministically,
+   before a brain is ever called.
+   ================================================================ */
+function agoStr(t){
+  var d = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if(d < 10) return "just now";
+  if(d < 60) return d + "s ago";
+  if(d < 3600) return Math.round(d / 60) + "m ago";
+  return Math.round(d / 3600) + "h ago";
+}
+function brainStatusText(){
+  var rows = PROVIDERS.map(function(p){
+    var st;
+    if(!brainConfigured(p)) st = "⚪ not configured";
+    else if(brainErrors[p.id]) st = "🔴 " + String(brainErrors[p.id].msg).slice(0, 80) + " · " + agoStr(brainErrors[p.id].t);
+    else if(brainOk[p.id]) st = "🟢 replied " + agoStr(brainOk[p.id]);
+    else st = "🟡 ready, not called yet";
+    return "| " + p.name + " | " + st + " |";
+  }).join("\n");
+  var cfg = PROVIDERS.filter(brainConfigured);
+  var working = cfg.filter(function(p){ return !brainErrors[p.id]; });
+  var last = lastBrainUsed ? (providerById(lastBrainUsed) || {}).name : "";
+  var verdict = last
+    ? "✅ **Working.** The last reply came from **" + last + "**" + (brainOk[lastBrainUsed] ? " (" + agoStr(brainOk[lastBrainUsed]) + ")" : "") + "."
+    : (working.length ? "🟡 Connected, but nothing has answered yet in this session. Ask one question and run `/brain` again."
+                      : "🔴 **Nothing is answering.** Every connected brain failed — details below.");
+  return "🤖 **BRAIN STATUS**\n\n| Brain | State |\n|---|---|\n" + rows +
+    "\n\n**Route:** " + (state.route === "deep" ? "🧪 DEEP" : "⚡ AUTO") + " · **Configured:** " + cfg.length + "/" + PROVIDERS.length +
+    "\n\n" + verdict +
+    (brainErrors.pollinations && !brainOk.pollinations
+      ? "\n\n**On the free brain:** it is the only keyless one, so if it fails, nothing else is tried unless you add a key. The fastest permanent fix is a free Gemini or Groq key in ⚙️ SETUP — both cost nothing and are far more reliable than text.pollinations.ai, which has been in maintenance mode since the unified `gen.pollinations.ai` launch."
+      : "");
+}
+function selfVoiceHelp(){
+  var sr = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  return "🎙️ **Voice — how it actually works here**\n\n" +
+    "This is a **web page**, not a Python console. It uses the browser's own **Web Speech API**. There is nothing to install: no PyAudio, no Whisper, no USB microphone. If an answer tells you to install those for this app, it is describing a different program.\n\n" +
+    "| Control | What it does |\n|---|---|\n" +
+    "| 💤 | **Wake mode** — keeps the mic open and waits for *\"hey jarvis\"* |\n" +
+    "| 🎙️ | **One phrase** — listens once, then sends it |\n" +
+    "| 🔊, in SETUP | **Voice output** — I speak the reply |\n\n" +
+    "Three things must all be true or the mic stays silent:\n\n" +
+    "1. **Chrome or Edge.** Safari and Firefox ship no speech recognition, and Chrome on iOS is Safari underneath.\n" +
+    "2. **https:// or localhost.** A microphone on plain http:// is blocked by the browser itself.\n" +
+    "3. **Not inside a frame.** If this page is embedded in a preview pane, open it in its own tab.\n\n" +
+    "| Check | Right now |\n|---|---|\n" +
+    "| Speech recognition in this browser | " + (sr ? "🟢 present" : "🔴 missing — use Chrome or Edge") + " |\n" +
+    "| Secure context (https/localhost) | " + (window.isSecureContext ? "🟢 yes" : "🔴 no") + " |\n" +
+    "| Own tab, not a frame | " + (window.top === window.self ? "🟢 yes" : "🔴 in a frame") + " |\n" +
+    "| Accent | " + ACCENTS[accentKey()].label + " · `/accent` to change |\n\n" +
+    "Then: tap 💤 once, wait for the pill to read `👂 hey jarvis`, and say *\"hey jarvis, what's the weather in Kanpur\"*. `/voice` prints this same live diagnostic any time.";
+}
+function selfWakeHelp(){
+  return "💤 **Wake word — the exact steps**\n\n" +
+    "1. Open this page in **Chrome or Edge**, over **https://** (or localhost).\n" +
+    "2. Tap **💤** once. The pill next to it must read `👂 hey jarvis` — if it does not, the mic was refused and nothing else will work.\n" +
+    "3. Say **\"hey jarvis, what's the weather in Kanpur\"**. A short pause after \"jarvis\" helps.\n" +
+    "4. I answer in text, and aloud if voice output is on.\n\n" +
+    "**Why it can fail, in order of likelihood:**\n\n" +
+    "| Cause | Fix |\n|---|---|\n" +
+    "| Page is in a preview pane / iframe | Open it in its own tab |\n" +
+    "| Plain http:// | Use https:// or localhost |\n" +
+    "| Safari / Firefox | Use Chrome or Edge |\n" +
+    "| Another tab or app holds the mic | Close it, then tap 💤 again |\n" +
+    "| Mic permission denied earlier | Click the padlock in the address bar → allow microphone |\n\n" +
+    "`/voice` tells you which of these is true on this device, right now.";
+}
+function faultHelp(){
+  var parts = [];
+  if(brainErrors.pollinations) parts.push("FREE BRAIN (Pollinations): " + brainErrors.pollinations.msg);
+  if(brainErrors.gemini) parts.push("Gemini: " + brainErrors.gemini.msg);
+  var errText = parts.length ? parts.join(" · ") : "no error recorded yet";
+  return "🛠 **WHY IT FAILED — and the real fix**\n\n" +
+    "| Question | Answer |\n|---|---|\n" +
+    "| What broke | " + errText.replace(/\|/g, "/") + " |\n" +
+    "| Which brain | The free, keyless one — so there was no backup to switch to |\n" +
+    "| Root cause | `text.pollinations.ai` is in maintenance mode since Pollinations moved to `gen.pollinations.ai`. It now answers only one model (`openai-fast`) and never promised uptime. |\n\n" +
+    "**Fixed in this build:** the app now calls the current `/v1/chat/completions` path, retries the legacy path, then falls back to a short GET — with URL length capped so it cannot 404 — and shows the provider's own words instead of \"HTTP 404\".\n\n" +
+    "**Your move, in order:**\n" +
+    "1. `/retry` — the same question, one clean attempt.\n" +
+    "2. `/brain` — see which brains are configured and what each one actually said.\n" +
+    "3. Add a **free** Gemini key (aistudio.google.com/apikey) or **free** Groq key (console.groq.com) in ⚙️ SETUP. Two minutes, no card, and it stops depending on a keyless service.";
+}
+/* Decide whether this message is a question about JARVIS itself. Short,
+   self-referential, and about one of its own subsystems — nothing else. */
+function selfAnswer(text){
+  var t = String(text || "").trim(), L = t.toLowerCase();
+  if(t.length > 240) return "";                                  /* real work goes to the brain */
+  var selfRef = /\b(jarvis|you|your|yours|yourself)\b/.test(L);
+  var asks = /^(why|how|what|when|where|is|are|do|does|did|can|could|should|check|test|fix|explain)\b/.test(L) ||
+             /\b(not working|doesn'?t work|isn'?t working|fails?|failed|broken|setup|set up|enable|turn on|activate)\b/.test(L);
+  var wake = /\bwake\b|\bhey jarvis\b/.test(L);
+  var voice = /\b(voice|mic|microphone|speech|speak|listen|listening|talk|accent|audio)\b/.test(L);
+  var brain = /\bbrains?\b|which model|free brain|pollinations|system fault|system fail|api key|are you (working|online|alive)/.test(L);
+
+  /* ordering matters: wake word, then accent, then voice, then brain */
+  if(wake && (selfRef || asks || /^active|^wake/) && !/weather|search|news/.test(L)) return selfWakeHelp();
+  /* "your voice is not working" is a fault question, not an accent request —
+     only an explicit accent/taste statement belongs here */
+  if(/\bsystem\s*(fault|fail)/.test(L) || /^why (did|does|system)/.test(L) && /fail|fault|error/.test(L)) return faultHelp();
+  if(/\baccent\b|change your (language|voice|accent)|sound more (british|american|indian)|don'?t like your (voice|accent)|dislike your (voice|accent)|stop (talking|speaking) like/.test(L)){
+    var want = /\bbritish|britain|uk|english uk|posh\b/.test(L) ? "british"
+             : /\bindian|india\b/.test(L) ? "indian"
+             : /\bamerican|us\b|usa\b/.test(L) ? "american"
+             : /\baustralian|aussie\b/.test(L) ? "australian"
+             : /\bneutral\b/.test(L) ? "neutral" : "";
+    if(want && setAccent(want)) return accentStatus();
+    return accentStatus();
+  }
+  if(voice && (selfRef || asks || /^active voice|^voice command|^enable voice|^start voice/.test(L))) return selfVoiceHelp();
+  if(brain) return brainStatusText();
+  return "";
 }
 
 /* ---------- main chat flow ---------- */
@@ -2693,6 +2916,25 @@ async function slashTool(text){
     await runKairvenKit(key, args, text);
     return true;
   }
+  if(key === "brain" || key === "brains"){
+    addMsg("user", text); addMsg("jarvis", brainStatusText()); return true;
+  }
+  if(key === "accent" || key === "voice-accent"){
+    addMsg("user", text);
+    var a = String(args || "").trim().toLowerCase();
+    if(a === "list"){ addMsg("jarvis", accentList()); return true; }
+    if(ACCENTS[a]){ setAccent(a); addMsg("jarvis", accentStatus()); return true; }
+    if(a) addMsg("jarvis", "No accent called `" + a + "`. Use **british**, **indian**, **american**, **australian**, **neutral** — or `/accent list` to see every installed voice.");
+    else addMsg("jarvis", accentStatus());
+    return true;
+  }
+  if(key === "retry"){
+    /* lastUserText() already exists in this app — it reads the tail of state.chat */
+    var prev = lastUserText();
+    if(!prev){ addMsg("jarvis", "Nothing to retry yet, sir — ask me something first."); return true; }
+    await handleUser(prev);
+    return true;
+  }
   if(key === "forget"){ addMsg("user", text); addMsg("jarvis", "See the TOOLS tab → TEACHINGS, and press ✕ on the note you want removed."); return true; }
   var SKILL_ALIAS = { international:"intl-sales", overseas:"intl-sales", legal:"outreach-law", contract:"sow" };
   var sk = skillById(key) ? key : (SKILL_ALIAS[key] || "");
@@ -2774,6 +3016,10 @@ async function handleUser(text){
   if(/^\/?status\b/i.test(text)){
     addMsg("user", text); addMsg("jarvis", statusText()); return;
   }
+
+  /* questions about JARVIS itself are answered by JARVIS, not guessed at */
+  var selfSay = selfAnswer(text);
+  if(selfSay){ addMsg("user", text); addMsg("jarvis", selfSay); return; }
   if(/^\/?clear\b/i.test(text)){ clearChat(); return; }
 
   if(await slashTool(text)) return;
@@ -2788,7 +3034,14 @@ async function handleUser(text){
     if((m = /^\/?search[:\s]+(.+)/i.exec(text)) || (/^search (for )?/i.test(text) && text.length < 120)){
       var q = m ? m[1] : text.replace(/^search (for )?/i,"");
       pre = "SEARCH: \"" + q + "\"";
-      toolContext = "=== LIVE WEB RESULTS (fetched just now) ===\n" + await doSearch(q) + "\n=== END RESULTS ===\n";
+      var found = await doSearch(q);
+      if(!found){
+        hideTyping();
+        addMsg("jarvis", noLiveResults(q));
+        speak("I could not reach any search source, sir. I will not guess.");
+        return;
+      }
+      toolContext = "=== LIVE WEB RESULTS (fetched just now) ===\n" + found + "\n=== END RESULTS ===\n";
     }
     if(/^\/?(brief|daily brief)\b/i.test(text)){
       pre = "MORNING BRIEF";
@@ -2839,7 +3092,9 @@ async function handleUser(text){
     if(err instanceof TypeError) hint = "\n\n*(Network blocked or offline. Note: the in-app preview sandbox has no internet — download the folder and open it in Chrome/Firefox for full power.)*";
     if(/api key|unauthorized|401|forbidden|403/i.test(err.message||"")) hint = "\n\n*(A brain rejected its key — fix it in SETUP. JARVIS auto-switches brains, so if you still see this, ALL connected brains failed.)*";
     if(/decommission|not_found|does not exist|model/i.test(err.message||"")) hint = "\n\n*(The model may have been retired — change it in SETUP (each brain has a model field), or press TEST ALL BRAINS.)*";
-    addMsg("jarvis", "⚠️ **System fault:** " + (err.message || "unknown error") + hint);
+    var emsg = (err && err.message) ? err.message : "unknown error";
+    var brainish = /empty\/malformed|network blocked|deprecated|HTTP 4\d\d|HTTP 5\d\d|free brain|unreachable|no brain configured/i.test(emsg);
+    addMsg("jarvis", brainish ? faultHelp() : ("⚠️ **System fault:** " + emsg + hint));
   }
 }
 
@@ -3233,6 +3488,7 @@ function fillSettings(){
   $("set-voice").checked = state.voiceOut;
   $("set-autosend").checked = state.voiceAutoSend !== false;
   $("set-voicelang").value = state.voiceLang || "en-IN";
+  populateAccentSelect();
   var vh = $("voice-help");
   if(vh){
     var h = voiceSetupHint();
@@ -3287,6 +3543,7 @@ function saveSettings(){
   state.voiceOut = $("set-voice").checked;
   state.voiceAutoSend = $("set-autosend").checked;
   state.voiceLang = $("set-voicelang").value;
+  if($("set-accent") && $("set-accent").value) state.accent = $("set-accent").value;
   if(recog) recog.lang = state.voiceLang;
   save();
   updateHeader();
@@ -3368,6 +3625,36 @@ function wipeAll(){
 }
 
 /* ---------- voice ---------- */
+var ACCENTS = {
+  british:    { label:"British English",    lang:"en-GB", re:/en[-_]GB|British|UK English|Daniel|Serena|Kate|Arthur/i },
+  indian:     { label:"Indian English",     lang:"en-IN", re:/en[-_]IN|India|Rishi|Veena|Prabhat|Neerja/i },
+  american:   { label:"American English",   lang:"en-US", re:/en[-_]US|United States|Samantha|Alex|Aria|Jenny/i },
+  australian: { label:"Australian English", lang:"en-AU", re:/en[-_]AU|Australia|Karen|Lee|Matilda/i },
+  neutral:    { label:"Neutral English",    lang:"en-GB", re:/Google UK English Female|en[-_]GB/i }
+};
+function accentKey(){ return ACCENTS[state.accent] ? state.accent : "british"; }
+/* Chrome fires this once the voice list is actually populated — before that,
+   getVoices() returns [] and every accent looks unavailable. */
+if(window.speechSynthesis && typeof window.speechSynthesis.addEventListener === "function"){
+  window.speechSynthesis.addEventListener("voiceschanged", function(){ populateAccentSelect(); });
+}
+function availableVoices(){
+  try{ return (window.speechSynthesis && window.speechSynthesis.getVoices()) || []; }catch(e){ return []; }
+}
+/* Pick the best installed voice for the chosen accent. Devices differ wildly:
+   Android may ship one en-US voice, iOS ships a dozen, desktop Chrome ships
+   Google/Microsoft voices. Never fail — fall back to any English voice. */
+function pickVoice(){
+  var a = ACCENTS[accentKey()], vs = availableVoices();
+  if(!vs.length) return null;
+  var i;
+  for(i = 0; i < vs.length; i++){
+    if(vs[i].lang && String(vs[i].lang).replace("_","-").toLowerCase().indexOf(a.lang.toLowerCase()) === 0) return vs[i];
+  }
+  for(i = 0; i < vs.length; i++){ if(a.re.test(vs[i].name + " " + vs[i].lang)) return vs[i]; }
+  for(i = 0; i < vs.length; i++){ if(/^en/i.test(vs[i].lang || "")) return vs[i]; }
+  return vs[0] || null;
+}
 function speak(text){
   if(!state.voiceOut || !window.speechSynthesis) return;
   var clean = text.replace(/```[\s\S]*?```/g, " code block. ")
@@ -3376,11 +3663,64 @@ function speak(text){
                   .replace(/\[(.*?)\]\(.*?\)/g,"$1")
                   .slice(0, 600);
   var u = new SpeechSynthesisUtterance(clean);
-  u.rate = 1.02; u.pitch = 0.85;
-  var vs = speechSynthesis.getVoices();
-  for(var i=0;i<vs.length;i++){ if(/en-IN|en_GB|Daniel|Google UK/i.test(vs[i].name + " " + vs[i].lang)){ u.voice = vs[i]; break; } }
-  speechSynthesis.cancel(); speechSynthesis.speak(u);
+  u.rate = 1.0; u.pitch = 0.9;
+  var v = pickVoice();
+  if(v){ u.voice = v; if(v.lang) u.lang = v.lang; }
+  else if(state.speakLang){ u.lang = state.speakLang; }
+  try{ speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
 }
+function populateAccentSelect(){
+  var sel = $("set-accent"); if(!sel) return;
+  if(!sel.options.length){
+    Object.keys(ACCENTS).forEach(function(k){
+      var o = document.createElement("option");
+      o.value = k; o.textContent = ACCENTS[k].label + " (" + ACCENTS[k].lang + ")";
+      sel.appendChild(o);
+    });
+  }
+  sel.value = accentKey();
+}
+function setAccent(key){
+  key = String(key || "").toLowerCase();
+  if(!ACCENTS[key]) return false;
+  state.accent = key;
+  state.speakLang = ACCENTS[key].lang;
+  state.voiceLang = ACCENTS[key].lang;      /* recognition follows the same language */
+  state.voiceOut = true;                    /* they asked for it — let them hear it */
+  if(recog) recog.lang = state.voiceLang;
+  save();
+  var sel = $("set-accent"); if(sel) sel.value = key;
+  var vl = $("set-voicelang"); if(vl) vl.value = state.voiceLang;
+  var vb = $("set-voice"); if(vb) vb.checked = true;
+  speak("Accent set, sir. This is how I sound now.");
+  toast("🎙️ " + ACCENTS[key].label);
+  return true;
+}
+function accentStatus(){
+  var key = accentKey(), a = ACCENTS[key], vs = availableVoices();
+  var v = pickVoice();
+  var en = vs.filter(function(x){ return /^en/i.test(x.lang || ""); });
+  return "🎙️ **VOICE & ACCENT**\n\n" +
+    "| Setting | Value |\n|---|---|\n" +
+    "| Accent | **" + a.label + "** (" + a.lang + ") |\n" +
+    "| Voice in use | " + (v ? "\"" + v.name + "\" · " + v.lang : "none installed for this accent") + " |\n" +
+    "| English voices on this device | " + en.length + " of " + vs.length + " total |\n" +
+    "| Voice output | " + (state.voiceOut ? "on" : "off — turn on in ⚙️ SETUP") + " |\n\n" +
+    "**Change it:**\n" +
+    "- `/accent british` · `/accent indian` · `/accent american` · `/accent australian` · `/accent neutral`\n" +
+    "- `/accent list` — every voice this device actually has\n\n" +
+    (en.length === 0 ? "⚠️ No English voice is installed, so I cannot change how I sound here. Desktop Chrome and Edge ship several; Android usually has one; iOS has the most." : "");
+}
+function accentList(){
+  var vs = availableVoices();
+  if(!vs.length) return "🎙️ This browser reports **zero** speech voices. On Chrome, voices load a moment after the page starts — open this again in a few seconds. If it stays empty, voice output is unavailable on this device.";
+  var rows = vs.map(function(v){
+    return "| " + v.name + " | " + (v.lang || "?") + " | " + (v.localService ? "on device" : "network") + " |";
+  }).join("\n");
+  return "🎙️ **" + vs.length + " voices installed**\n\n| Voice | Language | Source |\n|---|---|---|\n" + rows +
+    "\n\nPick an accent with `/accent british|indian|american|australian|neutral` — I choose the closest voice for it.";
+}
+
 /* ================================================================
    VOICE — tap-to-talk and "hey jarvis" wake word
    ----------------------------------------------------------------
@@ -3641,7 +3981,15 @@ window.JARVIS = {
   stripWakeWord: stripWakeWord, voiceSupported: voiceSupported, voiceSetupHint: voiceSetupHint,
   prefetchLive: prefetchLive, cityFromQuery: cityFromQuery, doSearch: doSearch,
   get voiceMode(){ return voiceMode; }, startVoice: startVoice, stopVoice: stopVoice,
-  testVoice: testVoice, LIVE_INTENTS: LIVE_INTENTS
+  testVoice: testVoice, LIVE_INTENTS: LIVE_INTENTS,
+  /* v4.6 — brain diagnostics, self-knowledge, accents */
+  selfAnswer: selfAnswer, brainStatusText: brainStatusText, faultHelp: faultHelp,
+  accentStatus: accentStatus, accentList: accentList, setAccent: setAccent, ACCENTS: ACCENTS,
+  pickVoice: pickVoice, accentKey: accentKey, compactPrompt: compactPrompt,
+  pollinationsFallback: pollinationsFallback, postJSON: postJSON, noLiveResults: noLiveResults,
+  get lastSearchDiag(){ return lastSearchDiag; }, get brainErrors(){ return brainErrors; },
+  get brainOk(){ return brainOk; }, get lastBrainUsed(){ return lastBrainUsed; },
+  get PROVIDERS(){ return PROVIDERS; }, statusText: statusText, handleUser: handleUser
 };
 
 if("serviceWorker" in navigator && location.protocol.indexOf("http") === 0){
