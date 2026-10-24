@@ -1,6 +1,11 @@
 # 🤖 J.A.R.V.I.S. MK-II — Setup Guide
 ### The personal AI of Mohd Sameer Khan
 
+### 🟢 LIVE → **https://kairven.github.io/jarvis/**
+
+Open that link on any device — nothing to install. On a phone: open it in Chrome →
+menu → **Add to Home Screen** → JARVIS launches full-screen like a native app.
+
 One file. No installation. No programming. Free forever.
 
 ---
