@@ -1,0 +1,34 @@
+name: Pre-flight check
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install checker dependencies
+        run: npm install --no-save acorn acorn-walk
+      - name: Lint the inline app script (strict-mode hazards, syntax, wiring)
+        run: node tools/check.js index.html
+      - name: Validate service worker syntax
+        run: node --check sw.js
+      - name: Validate manifest is valid JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8')); console.log('manifest OK')"
+      - name: Ensure every referenced icon exists
+        run: |
+          node -e '
+            const fs=require("fs");
+            const m=JSON.parse(fs.readFileSync("manifest.json","utf8"));
+            const refs=[...m.icons.map(i=>i.src), "icons/icon-180.png"];
+            let bad=refs.filter(p=>!fs.existsSync(p));
+            if(bad.length){ console.log("MISSING:", bad.join(", ")); process.exit(1); }
+            console.log("icons OK:", refs.join(", "));
+          '

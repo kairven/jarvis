@@ -179,6 +179,12 @@
     .page{padding:10px}
   }
 
+  .bootfault{position:fixed;top:0;left:0;right:0;z-index:9999;background:#3a0d12;border-bottom:1px solid var(--red);color:#ffd7d7;
+    padding:10px 16px;font-size:12px;line-height:1.6;display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+  .bootfault b{color:var(--red);letter-spacing:.04em}
+  .bootfault code{background:rgba(255,107,107,.12);padding:1px 6px;border-radius:4px;color:#fff}
+  .bootfault span{color:#ff9d9d;font-size:11px}
+
   /* ---------- SUPERCHARGE: tool belt ---------- */
   .tool-card{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(180deg,rgba(12,26,42,.75),rgba(8,18,30,.6));margin-bottom:9px;transition:opacity .2s,border-color .2s}
   .tool-card:hover{border-color:var(--line2)}
@@ -492,6 +498,26 @@
 
 <script>
 "use strict";
+/* ---- boot guard: a failed subsystem must never fail silently ----
+   (declared first, so it survives even if the rest of this file dies) */
+window.addEventListener("error", function(ev){
+  try{
+    if(!document.body || document.getElementById("bootfault")) return;
+    var box = document.createElement("div");
+    box.id = "bootfault";
+    box.className = "bootfault";
+    box.innerHTML = '<b>⚠️ Subsystem fault</b> <code class="mono">' +
+      String(ev.message || "unknown error").replace(/[<>&]/g, "") + '</code>' +
+      '<span>line ' + (ev.lineno || "?") + ' · some features are disabled until you reload</span>';
+    document.body.appendChild(box);
+  }catch(e){}
+});
+window.addEventListener("unhandledrejection", function(ev){
+  try{
+    if(typeof toast === "function") toast("⚠️ " + ((ev.reason && ev.reason.message) || "async fault"));
+  }catch(e){}
+});
+
 /* ================================================================
    J.A.R.V.I.S. MK-II v4 — single-folder personal AI
    8 free LLM brains + 21-tool agent loop + image engine + PWA
@@ -1225,7 +1251,7 @@ function timerNow(input){
 }
 
 /* ---------- TOOL REGISTRY ---------- */
-TOOLS = [
+var TOOLS = [
   { id:"calc", emoji:"🔢", name:"Calculator", desc:"Exact arithmetic, %, powers, roots, trig — a real parser, not a guess.", sample:"18% of 4500 + sqrt(144)",
     fn:async function(a){ var v = mathEval(a); return "🔢 `" + a + "` = **" + num(v) + "**"; } },
   { id:"units", emoji:"📐", name:"Unit converter", desc:"Length, mass, time, data, speed, area, volume, temperature.", sample:"10 km to mi",
@@ -1309,7 +1335,12 @@ async function runTool(id, args){
     var res = { ok:true, id:tool.id, args:args || "", out:String(out), img:(r && r.img) || "", ms:Date.now() - t0 };
     logTool(res); return res;
   }catch(e){
-    var res2 = { ok:false, id:tool.id, args:args || "", out:(e && e.message) ? e.message : String(e), ms:Date.now() - t0 };
+    var msg = (e && e.message) ? e.message : String(e);
+    if(/failed to fetch|networkerror|load failed|network request failed|the internet connection appears to be offline/i.test(msg))
+      msg = "no network connection — " + tool.name + " needs to be online (you are browsing offline)";
+    else if(/abort/i.test(msg))
+      msg = tool.name + " timed out — the service did not respond in time";
+    var res2 = { ok:false, id:tool.id, args:args || "", out:msg, ms:Date.now() - t0 };
     logTool(res2); return res2;
   }
 }
