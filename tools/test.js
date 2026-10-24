@@ -291,11 +291,76 @@ async function suiteAuditFixes() {
   assert("unused peek() helper is gone", !/function peek\(/.test(js));
 }
 
+/* ============ SUITE 5 — skills & teachings ============ */
+async function suiteSkills() {
+  console.log("\n── SUITE 5 · skills & teachings ──");
+  const { w, d } = await boot();
+  const J = w.JARVIS;
+
+  assert("18 skills available", J.SKILLS.length === 18, J.SKILLS.length);
+  assert("12 built-in teachings", J.TEACHINGS.length === 12, J.TEACHINGS.length);
+
+  const cases = [
+    ["my code crashes with this error", "debug"],
+    ["how do I prepare for my exam", "study"],
+    ["should I raise my price", "money"],
+    ["help me negotiate a salary offer", "negotiate"],
+  ];
+  cases.forEach(([q, want]) => {
+    const got = J.matchSkills(q, 2).map((x) => x.skill.id);
+    assert('skill match: "' + q + '" → ' + want, got.includes(want), JSON.stringify(got));
+  });
+  assert("a plain lookup matches no skill", J.matchSkills("what is the weather in kanpur", 2).length === 0);
+
+  /* the tokenizer must handle plurals and ignore stopwords */
+  assert("plural matches singular (crashes → crash)",
+    J.matchSkills("crashes", 2).some((x) => x.skill.id === "debug"));
+  assert("stopwords do not create false matches",
+    J.matchSkills("what is the", 2).length === 0);
+
+  /* teachings */
+  assert("teaching retrieved for tokenization",
+    J.matchTeachings("how does a tokenizer split hindi words", 1).map((x) => x.doc.id).includes("tokens"));
+  assert("no teaching for an unrelated question",
+    J.matchTeachings("what is the weather in kanpur", 1).length === 0);
+
+  /* prompt: only matched skills, inside budget */
+  const sp = w.systemPrompt({ query: "my python code keeps crashing with an error" });
+  assert("matched skill lands in the prompt", /ACTIVE SKILLS/.test(sp) && /Debugging/.test(sp));
+  assert("all 18 skills are NOT sent", (sp.match(/### /g) || []).length < 8, (sp.match(/### /g) || []).length + " headings");
+  assert("skill block respects its budget", J.lastContext.skills.chars <= J.CONTEXT_BUDGET.skillChars, J.lastContext.skills.chars);
+
+  /* teaching him directly */
+  const r = J.teachLesson("Our cheapest plan is Rs 499 per month and we never discount it.");
+  assert("teachLesson stores a note", r.ok && w.state.lessons.length === 1, JSON.stringify(r));
+  assert("duplicate note rejected", !J.teachLesson("Our cheapest plan is Rs 499 per month and we never discount it.").ok);
+  assert("too-short note rejected", !J.teachLesson("hi").ok);
+  const sp3 = w.systemPrompt({ query: "can I discount the cheapest plan for a client" });
+  assert("taught note retrieved when relevant", /499/.test(sp3));
+
+  /* UI + commands */
+  J.renderSkills();
+  assert("skills list renders", d.querySelectorAll("#skills-list .skill-row").length === 18);
+  await J.slashTool("/skills");
+  assert("/skills lists the catalogue", /SKILLS/.test(d.getElementById("messages").textContent));
+  await J.slashTool("/debug");
+  assert("/debug shows the procedure", /Debugging/.test(d.getElementById("messages").textContent));
+  const before = w.state.lessons.length;
+  await J.slashTool("/teach Never promise a delivery date before the supplier confirms.");
+  assert("/teach works from chat", w.state.lessons.length === before + 1);
+
+  /* disabling takes effect */
+  w.state.skillsOff = ["debug"];
+  assert("disabled skill is not matched", !J.matchSkills("my code crashes", 2).some((x) => x.skill.id === "debug"));
+  w.state.skillsOff = [];
+}
+
 (async () => {
   await suitePerf();
   await suiteChat();
   await suiteContext();
   await suiteAuditFixes();
+  await suiteSkills();
   finish();
 })().catch((e) => {
   console.log("FAIL · suite crashed: " + (e && e.stack ? e.stack : e));
