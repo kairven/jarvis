@@ -158,6 +158,38 @@ per turn, and *"what's the weather in Kanpur"* injects **no skill at all**.
 
 Details, honest limits and sizes: **[SKILLS.md](SKILLS.md)**.
 
+### 🎙️ v4.4 — "hey jarvis" wake word, and real-time data that actually works
+
+**Voice was broken in three specific ways, all fixed:**
+1. Recognition stopped after one phrase and **never restarted** — so a wake word was impossible.
+2. Errors were swallowed, so a blocked microphone looked like a dead button.
+3. It never told you Web Speech needs **Chrome/Edge over https:// or localhost**.
+
+Now: tap 🎙️ for one phrase, or 💤 to wait for **"hey jarvis"**. It listens continuously,
+restarts itself when Chrome ends the session, shows interim text, ignores its own voice
+(no echo loop), and returns to sleep after 12 seconds of silence. Errors are readable —
+"Microphone blocked. Click the padlock → Site settings → Microphone → Allow."
+`/voice` prints a full status table. Languages: English (India/US/UK), हिन्दी, தமிழ், తెలుగు, मराठी, বাংলা.
+
+**"Unable to search real-time stats" had a concrete cause:** the search tool was querying
+DuckDuckGo's *instant-answer* API, which answers trivia questions and returns **nothing**
+for "current price of bitcoin". It never was a search engine.
+
+Now there are two fixes:
+- `doSearch` fetches a **real results page** (DuckDuckGo HTML, via a CORS-friendly reader), with Wikipedia and instant answers as supplements.
+- **AUTO LIVE**: for weather / crypto / forex / news questions, JARVIS fetches the real numbers
+  **before** the model speaks and hands them over. You no longer depend on a small free brain
+  deciding to call a tool — the data is simply there.
+
+```
+You:  "hey jarvis, what's bitcoin at?"
+      → 📡 Fetched live data → answer with the real price, not a guess
+```
+
+And in ⚙️ SETUP, **TEST ALL BRAINS** now prints *why* a brain failed (401 vs 429 vs CORS vs
+retired model), with a separate **live data** check — because your API key powers thinking,
+while weather/prices come from the tool belt, which needs no key at all.
+
 ---
 
 **Auto-Learn** (default ON): after every conversation, JARVIS silently extracts durable facts about you and saves them. **This is its self-training** — it gets smarter about your life every single day, and you can audit everything in the **🧠 MIND** tab.

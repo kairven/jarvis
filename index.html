@@ -196,6 +196,13 @@
   .tool-card .tmain p{font-size:12px;color:var(--dim);line-height:1.5;margin-top:3px}
   .tool-card .tmain .tsample{color:var(--gold);opacity:.85;font-size:11px}
   .tool-card .tside{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+  .vpill{max-width:900px;margin:0 auto 6px;padding:5px 12px;border-radius:20px;font-size:11px;letter-spacing:.04em;
+    border:1px solid var(--line2);color:var(--dim);background:rgba(10,22,36,.8);text-align:center}
+  .vpill.wake{border-color:rgba(55,224,255,.5);color:var(--cyan)}
+  .vpill.command{border-color:rgba(255,107,107,.55);color:#ffb3b3}
+  .iconbtn.wake{color:var(--cyan);border-color:rgba(55,224,255,.45)}
+  .iconbtn.on{background:rgba(55,224,255,.14);border-color:var(--cyan)}
+
   .skill-row{display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px}
   .skill-row:last-child{border-bottom:0}
   .skill-row.off{opacity:.45}
@@ -267,8 +274,10 @@
       <button onclick="prefill('/security ')">🛡️ Security Check</button>
       <button onclick="clearChat()">🗑️ Clear Chat</button>
     </div>
+    <div id="voice-state" class="vpill" style="display:none"></div>
     <div class="composer">
       <button class="iconbtn" id="mic-btn" onclick="toggleMic()" title="Voice input" style="display:none">🎙️</button>
+      <button class="iconbtn" id="wake-btn" onclick="toggleWake()" title="Wake word" style="display:none">💤</button>
       <textarea id="input" rows="1" placeholder="Talk to J.A.R.V.I.S... (try: /search, /imagine, /brief, /task, remember...)" autofocus></textarea>
       <button class="iconbtn" onclick="sendFromInput()" title="Send">➤</button>
     </div>
@@ -520,7 +529,10 @@
         <h3>🧠 STEP 1 — CONNECT YOUR FREE BRAIN ARMY (8 available)</h3>
         <p>The <b>FREE BRAIN</b> works with zero signup — always. Every extra brain you connect makes JARVIS stronger and <b>unkillable</b>: if one fails or hits its limit, it auto-switches to the next. Add any keys you have (or none), then <b>💾 SAVE</b>. Keys never leave this device.</p>
         <div id="brains-box"></div>
-        <div class="row"><button class="btn" onclick="saveSettings()">💾 SAVE ALL BRAINS</button><button class="btn" onclick="testConnection()">🔎 TEST ALL BRAINS</button><span id="test-result" class="mono" style="font-size:12px;color:var(--dim);align-self:center"></span></div>
+        <div class="row"><button class="btn" onclick="saveSettings()">💾 SAVE ALL BRAINS</button><button class="btn" onclick="testConnection()">🔎 TEST ALL BRAINS</button></div>
+        <p id="test-result" class="mono" style="font-size:12px;color:var(--dim);line-height:1.6"></p>
+        <p class="mono" style="font-size:11px;color:var(--dim);line-height:1.6;margin-top:8px">Your API key powers <b>thinking</b>. Real-time numbers come from the <b>tool belt</b> (weather, crypto, forex, news), which needs no key at all. Test them separately:</p>
+        <p id="live-result" class="mono" style="font-size:12px;color:var(--dim);line-height:1.6"></p>
       </div>
 
       <div class="card">
@@ -538,6 +550,22 @@
         <label style="display:flex;align-items:center;gap:10px;font-size:13px;margin:8px 0"><input type="checkbox" id="set-board" checked style="width:16px;height:16px;accent-color:#37e0ff"> <span><b>Board of Advisors</b> — every deep answer gets ⚙️Operator + 💡Innovator + ⚔️Challenger perspectives</span></label>
         <label style="display:flex;align-items:center;gap:10px;font-size:13px;margin:8px 0"><input type="checkbox" id="set-autolearn" checked style="width:16px;height:16px;accent-color:#37e0ff"> <span><b>Auto-Learn</b> — JARVIS silently extracts facts about you after each chat (self-training)</span></label>
         <label style="display:flex;align-items:center;gap:10px;font-size:13px;margin:8px 0"><input type="checkbox" id="set-voice" style="width:16px;height:16px;accent-color:#37e0ff"> <span><b>Voice output</b> — JARVIS speaks replies aloud</span></label>
+        <label style="display:flex;align-items:center;gap:10px;font-size:13px;margin:8px 0"><input type="checkbox" id="set-autosend" style="width:16px;height:16px;accent-color:#37e0ff"> <span><b>Voice auto-send</b> — when speech ends, send it without pressing ➤</span></label>
+        <div class="row" style="align-items:center;gap:8px">
+          <label class="mono" style="font-size:11px;color:var(--dim)">SPEECH LANGUAGE</label>
+          <select id="set-voicelang" class="field" style="max-width:210px;padding:6px">
+            <option value="en-IN">English (India)</option>
+            <option value="en-US">English (US)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="hi-IN">हिन्दी (India)</option>
+            <option value="ta-IN">தமிழ் (India)</option>
+            <option value="te-IN">తెలుగు (India)</option>
+            <option value="mr-IN">मराठी (India)</option>
+            <option value="bn-IN">বাংলা (India)</option>
+          </select>
+          <button class="btn small" onclick="testVoice()">🎙️ TEST VOICE</button>
+        </div>
+        <p class="mono" id="voice-help" style="font-size:11px;color:var(--dim);line-height:1.6;margin-top:6px"></p>
       </div>
 
       <div class="card">
@@ -604,7 +632,8 @@ var store = (function(){
 var DEFAULTS = {
   temp:0.6, route:"auto", board:true, autoLearn:true, voiceOut:false, masterPrompt:"", agentUrl:"", agentToken:"",
   brains:{}, memories:[], knowledge:[], tasks:[], chat:[], toolsOff:[], homeCity:"Kanpur",
-  skillsOff:[], teachingsOff:[], lessons:[]
+  skillsOff:[], teachingsOff:[], lessons:[],
+  voiceAutoSend:true, voiceLang:"en-IN", wakeOnBoot:false
 };
 
 /* ---------- 8 FREE LLM BRAINS — registry ---------- */
@@ -2148,6 +2177,7 @@ async function agentRun(msgs){
       "=== TOOL RESULTS (live, just now) ===\n" + lines.join("\n\n") +
       "\n=== END TOOL RESULTS ===\nNow answer sir's original request using these results. " +
       "Never invent data or contradict the results. Do not re-run a tool for the same information. " +
+      "If LIVE DATA is present above, its numbers are current — use them exactly. " +
       "If a result is marked CACHED or LIVE FETCH FAILED, say so plainly in one short phrase so he knows it may be out of date. " +
       "Do not write any [TOOL: ...] line in the final answer." });
   }
@@ -2385,11 +2415,80 @@ async function ddgSearch(q){
   });
   return lines.join("\n");
 }
+/* Real web results. The old version only asked DuckDuckGo's instant-answer API,
+   which answers facts ("what is a giraffe") and returns NOTHING for a normal
+   query like "current price of bitcoin" — that is why live stats never worked.
+   Now we fetch an actual results page through a CORS-friendly reader. */
+async function ddgHtml(q){
+  var target = "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q);
+  var txt = await getText("https://r.jina.ai/" + target, { "Accept":"text/plain" }, 20000);
+  if(!txt) return "";
+  var lines = String(txt).split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
+  var out = [], seen = {};
+  for(var i = 0; i < lines.length && out.length < 8; i++){
+    var l = lines[i];
+    if(l.length < 45) continue;                       /* headings, nav, cookies */
+    if(/^(duckduckgo|cookie|privacy|terms|feedback|settings)\b/i.test(l)) continue;
+    if(/^\[?(image|video|news|about|settings)\b/i.test(l)) continue;
+    var key = l.slice(0, 40);
+    if(seen[key]) continue;
+    seen[key] = 1;
+    out.push("• " + l.slice(0, 320));
+  }
+  return out.join("\n");
+}
 async function doSearch(q){
   var results = [];
+  try{ var d = await ddgHtml(q); if(d) results.push("Web results (DuckDuckGo, live):\n" + d); }catch(e){}
   try{ var w = await wikiSearch(q); if(w) results.push("Wikipedia:\n" + w); }catch(e){}
-  try{ var dd = await ddgSearch(q); if(dd) results.push("DuckDuckGo:\n" + dd); }catch(e){}
-  return results.join("\n\n") || "(No live results found — search APIs unreachable.)";
+  try{ var dd = await ddgSearch(q); if(dd) results.push("Quick answer:\n" + dd); }catch(e){}
+  return results.join("\n\n") || "(No live results — the network or the search proxies are unreachable.)";
+}
+
+/* ================================================================
+   AUTO LIVE — fetch real numbers BEFORE the model speaks
+   ----------------------------------------------------------------
+   Relying on the model to volunteer a [TOOL:] call is unreliable:
+   many brains (especially small free ones) simply answer from memory
+   and invent a temperature. So when the question is clearly about
+   live data, fetch it first and hand the model the numbers.
+   ================================================================ */
+var LIVE_INTENTS = [
+  { id:"weather", re:/\b(weather|temperature|forecast|humidity|raining|rain|sunny|climate today)\b/i,
+    args:function(q){ return cityFromQuery(q); } },
+  { id:"crypto",  re:/\b(bitcoin|btc|ethereum|eth\b|solana|sol\b|dogecoin|doge|cardano|ada\b|crypto|coin price|token price)\b/i,
+    args:function(q){
+      var m = /\b(bitcoin|btc|ethereum|eth|solana|sol|dogecoin|doge|cardano|ada|xrp|ripple|litecoin|ltc|polkadot|dot|chainlink|link)\b/i.exec(q);
+      return m ? m[1].toLowerCase() : "btc";
+    } },
+  { id:"forex",   re:/\b(exchange rate|usd|inr|eur|gbp|usd\/inr|dollar|rupee|convert .* (to|into) (usd|inr|eur|gbp))\b/i,
+    args:function(q){ return q; } },
+  { id:"news",    re:/\b(latest news|headlines|breaking|what happened|news about|tech news)\b/i,
+    args:function(q){ return q.replace(/\b(news|headlines|latest|about|breaking|what happened|tech)\b/gi, "").trim() || "AI"; } }
+];
+function cityFromQuery(q){
+  var lower = String(q).toLowerCase();
+  for(var city in CITY_TZ){ if(city.length > 3 && lower.indexOf(city) !== -1) return city; }
+  var m = /\bin\s+([A-Z][a-z]{2,})/.exec(q);            /* "weather in Kanpur" */
+  return m ? m[1] : (state.homeCity || "");
+}
+async function prefetchLive(q){
+  var picks = [];
+  LIVE_INTENTS.forEach(function(x){
+    if(x.re.test(q) && picks.length < 2) picks.push(x);
+  });
+  if(!picks.length) return "";
+  var lines = [];
+  for(var i = 0; i < picks.length; i++){
+    var args = picks[i].args(q) || "";
+    var res = await runTool(picks[i].id, args);
+    if(res.ok) lines.push("[" + picks[i].id + " " + args + "]\n" + res.out + (res.stale ? "\n(stale — live fetch failed)" : ""));
+  }
+  if(!lines.length) return "";
+  return "=== LIVE DATA (fetched just now, " + new Date().toLocaleTimeString("en-IN") + ") ===\n" +
+    lines.join("\n\n") +
+    "\n=== END LIVE DATA ===\nThese numbers are real and current. Answer from them, not from memory. " +
+    "If a value is marked stale, say so in one short phrase.\n";
 }
 
 /* ---------- device status ---------- */
@@ -2530,6 +2629,19 @@ async function handleUser(text){
     }catch(e){ hideTyping(); addMsg("jarvis", "\u26A0️ **Agent unreachable:** " + e.message + "\n\nIs agent.py running? PING it in the CONTROL tab."); }
     return;
   }
+  if(/^\/?voice\b/i.test(text)){
+    addMsg("user", text);
+    var vh = voiceSetupHint();
+    addMsg("jarvis", "🎙️ **VOICE STATUS**\n\n| Item | State |\n|---|---|\n" +
+      "| Speech recognition | " + (voiceSupported() ? "🟢 available" : "🔴 not in this browser") + " |\n" +
+      "| Secure page (https/localhost) | " + (window.isSecureContext ? "🟢 yes" : "🔴 no — mic is blocked") + " |\n" +
+      "| Not inside a frame | " + (window.top === window.self ? "🟢 yes" : "🔴 in a frame — open in its own tab") + " |\n" +
+      "| Language | " + (state.voiceLang || "en-IN") + " |\n" +
+      "| Auto-send after speech | " + (state.voiceAutoSend !== false ? "on" : "off") + " |\n" +
+      "| Wake word | " + (wantListen ? "👂 listening for \"hey jarvis\"" : "off — tap 💤") + " |\n\n" +
+      (vh ? "⚠️ " + vh : 'Say **"hey jarvis, what is the weather in Kanpur"** — or tap 🎙️ for a single phrase. Change the language in ⚙️ SETUP → Behaviour.'));
+    return;
+  }
   if(/^\/?status\b/i.test(text)){
     addMsg("user", text); addMsg("jarvis", statusText()); return;
   }
@@ -2554,6 +2666,14 @@ async function handleUser(text){
     }
     if((m = /^\/?security[:\s]+(.+)/i.exec(text))){
       toolContext = "=== REQUEST TYPE: DEFENSIVE SECURITY ADVISORY ===\nTopic: " + m[1] + "\nGive a structured, practical, DEFENSIVE plan for HIS OWN systems. Include a checklist table. Never instructions for attacking others.\n";
+    }
+
+    /* live data first: do not trust the brain to volunteer a tool call */
+    if(!toolContext){
+      try{
+        var prefetched = await prefetchLive(text);
+        if(prefetched){ toolContext = prefetched; toast("📡 Fetched live data"); }
+      }catch(e){}
     }
 
     var sys = systemPrompt({ query: text });
@@ -2982,6 +3102,20 @@ function fillSettings(){
   $("set-board").checked = state.board;
   $("set-autolearn").checked = state.autoLearn;
   $("set-voice").checked = state.voiceOut;
+  $("set-autosend").checked = state.voiceAutoSend !== false;
+  $("set-voicelang").value = state.voiceLang || "en-IN";
+  var vh = $("voice-help");
+  if(vh){
+    var h = voiceSetupHint();
+    vh.textContent = h || "Microphone ready. Tap 🎙️ for one phrase, or 💤 to wait for “hey jarvis”. Chrome or Edge only; needs https:// or localhost.";
+    vh.style.color = h ? "var(--gold)" : "var(--dim)";
+  }
+}
+function testVoice(){
+  var h = voiceSetupHint();
+  if(h){ toast("🎙️ " + h, 6000); return; }
+  speak("Voice systems online, sir. Say hey jarvis when you need me.");
+  setTimeout(function(){ toast("🔊 If you heard nothing, your system volume or the chosen voice is the problem — not the microphone."); }, 1200);
 }
 function renderBrainRows(){
   var box = $("brains-box"); if(!box) return;
@@ -3022,6 +3156,9 @@ function saveSettings(){
   state.board = $("set-board").checked;
   state.autoLearn = $("set-autolearn").checked;
   state.voiceOut = $("set-voice").checked;
+  state.voiceAutoSend = $("set-autosend").checked;
+  state.voiceLang = $("set-voicelang").value;
+  if(recog) recog.lang = state.voiceLang;
   save();
   updateHeader();
   toast("✅ Saved — " + brainsConfiguredCount() + "/" + PROVIDERS.length + " brains connected");
@@ -3030,17 +3167,37 @@ async function testConnection(){
   var el = $("test-result");
   el.textContent = "testing " + PROVIDERS.length + " brains..."; el.style.color = "var(--dim)";
   var probe = [{ role:"user", content:"Reply with exactly: ONLINE" }];
-  var out = [], alive = 0;
+  var out = [], alive = 0, why = [];
   for(var i = 0; i < PROVIDERS.length; i++){
     var p = PROVIDERS[i];
     if(!brainConfigured(p)){ out.push(p.short + "—"); continue; }
     try{ await brainCall(p, probe); out.push(p.short + "✓"); alive++; }
-    catch(e){ out.push(p.short + "✗"); }
+    catch(e){
+      var m = (e && e.message) ? e.message : "failed";
+      out.push(p.short + "✗");
+      why.push(p.short + ": " + String(m).slice(0, 130));
+    }
   }
   el.textContent = (alive ? "✓ " + alive + " alive: " : "✗ none alive: ") + out.join(" · ");
   el.style.color = alive ? "var(--green)" : "var(--red)";
   if(!alive && !navigator.onLine) el.textContent += " — you are offline";
-  else if(!alive) el.textContent += " — in the sandboxed preview there is no internet; download & open in Chrome";
+  else if(why.length) el.textContent += " — " + why.join(" | ");
+
+  /* The brain and the live data are two separate systems. Test the second one
+     independently: this is the check to run when "real-time stats" misbehave. */
+  var lr = $("live-result");
+  if(lr){
+    lr.textContent = "checking live data…"; lr.style.color = "var(--dim)";
+    var checks = [["weather", state.homeCity || "Kanpur"], ["crypto", "btc"], ["news", "AI"]];
+    var okN = 0, detail = [];
+    for(var k = 0; k < checks.length; k++){
+      var res = await runTool(checks[k][0], checks[k][1]);
+      if(res.ok && !res.stale){ okN++; detail.push(checks[k][0] + " ✓ " + (res.cached ? "cached " : "") + res.ms + "ms"); }
+      else detail.push(checks[k][0] + " ✗ " + String(res.out).slice(0, 60));
+    }
+    lr.textContent = (okN === checks.length ? "✓ live data online: " : "⚠️ live data " + okN + "/" + checks.length + ": ") + detail.join(" · ");
+    lr.style.color = okN === checks.length ? "var(--green)" : okN ? "var(--gold)" : "var(--red)";
+  }
 }
 function exportData(){
   var blob = new Blob([JSON.stringify(state, null, 2)], { type:"application/json" });
@@ -3095,28 +3252,226 @@ function speak(text){
   for(var i=0;i<vs.length;i++){ if(/en-IN|en_GB|Daniel|Google UK/i.test(vs[i].name + " " + vs[i].lang)){ u.voice = vs[i]; break; } }
   speechSynthesis.cancel(); speechSynthesis.speak(u);
 }
-var recog = null, listening = false;
-function initMic(){
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SR) return;
-  $("mic-btn").style.display = "";
-  recog = new SR();
-  recog.lang = "en-IN"; recog.interimResults = false; recog.maxAlternatives = 1;
-  recog.onresult = function(e){
-    var t = e.results[0][0].transcript;
-    $("input").value = ($("input").value ? $("input").value + " " : "") + t;
+/* ================================================================
+   VOICE — tap-to-talk and "hey jarvis" wake word
+   ----------------------------------------------------------------
+   What the old version did wrong (all of it fixed here):
+   • recognition stopped after one phrase and never restarted, so a
+     wake word was impossible;
+   • errors were swallowed, so a denied microphone looked like a dead button;
+   • no interim text, no way to know it was listening;
+   • never told you that Web Speech needs Chrome/Edge over HTTPS.
+   ================================================================ */
+var recog = null, listening = false, wantListen = false;
+var voiceMode = "idle";       /* idle | wake | command */
+var voiceRestarts = 0, voiceRestartTimer = null, voiceSilenceTimer = null;
+var interimText = "", speakUntil = 0;
+
+function voiceSupported(){
+  return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+function voiceSetupHint(){
+  if(!voiceSupported()) return "This browser has no speech recognition. Use Chrome or Edge (desktop or Android).";
+  if(!window.isSecureContext) return "Voice needs a secure page: open it over https:// or on localhost. A file:// page or an http:// LAN address will not work.";
+  if(window.top !== window.self) return "This page is inside a frame that may not grant the microphone. Open the app in its own tab.";
+  return "";
+}
+function voiceSetState(mode, label){
+  voiceMode = mode;
+  var b = $("mic-btn");
+  if(b){
+    b.classList.toggle("rec", mode === "command");
+    b.classList.toggle("wake", mode === "wake");
+    b.textContent = mode === "idle" ? "🎙️" : mode === "wake" ? "👂" : "🔴";
+  }
+  var pill = $("voice-state");
+  if(pill){
+    pill.textContent = label || (mode === "idle" ? "" : mode === "wake" ? "listening for “hey jarvis”" : "listening…");
+    pill.className = "vpill " + mode;
+    pill.style.display = label === "" ? "none" : "";
+  }
+}
+
+/* Map the browser's error codes to something a person can act on. */
+function voiceError(code){
+  var m = {
+    "not-allowed": "Microphone blocked. Click the padlock in the address bar → Site settings → Microphone → Allow, then reload.",
+    "service-not-allowed": "Speech service refused. Chrome needs an internet connection for speech recognition.",
+    "audio-capture": "No microphone found. Plug one in or check your system input device.",
+    "network": "Speech recognition needs internet and could not reach the service.",
+    "no-speech": "I heard nothing. Try again closer to the mic.",
+    "aborted": "Stopped.",
+    "language-not-supported": "That language is not available for speech here. Try English (India).",
+    "bad-grammar": "Speech grammar error — reload the page."
   };
-  recog.onend = function(){ listening = false; $("mic-btn").classList.remove("rec"); };
-  recog.onerror = function(){ listening = false; $("mic-btn").classList.remove("rec"); };
+  return m[code] || ("Speech error: " + code);
+}
+
+function initMic(){
+  var hint = voiceSetupHint();
+  var sr = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!sr){
+    /* keep the button visible but explain, instead of silently hiding it */
+    var b0 = $("mic-btn");
+    if(b0){ b0.style.display = ""; b0.title = hint; b0.textContent = "🎙️"; b0.onclick = function(){ toast("🎙️ " + hint); }; }
+    return;
+  }
+
+  recog = new sr();
+  recog.lang = state.voiceLang || "en-IN";
+  recog.continuous = true;
+  recog.interimResults = true;
+  recog.maxAlternatives = 1;
+
+  recog.onstart = function(){
+    listening = true; voiceRestarts = 0;
+    voiceSetState(wantListen ? "wake" : "command");
+  };
+
+  recog.onresult = function(e){
+    /* do not hear myself talking (echo would fake a wake word) */
+    if(Date.now() < speakUntil) return;
+    var finalTxt = "";
+    for(var i = e.resultIndex; i < e.results.length; i++){
+      var r = e.results[i];
+      if(r.isFinal) finalTxt += r[0].transcript;
+      else interimText = r[0].transcript;
+    }
+    var live = $("input");
+    if(live && interimText && !finalTxt) live.placeholder = "… " + interimText.trim();
+
+    if(!finalTxt) return;
+    interimText = "";
+    var said = finalTxt.trim();
+    if(live) live.placeholder = "Talk to J.A.R.V.I.S... (try: /search, /imagine, /brief, /task, remember...)";
+
+    var cmd = stripWakeWord(said);
+    if(voiceMode === "wake" || wantListen){
+      if(cmd === null){
+        /* heard speech but no wake word — stay quiet */
+        voiceSilenceReset();
+        return;
+      }
+      voiceSetState("command");
+      toast("👂 Yes, sir?");
+      if(cmd) handleVoiceCommand(cmd);
+      else listenForCommand();
+      return;
+    }
+    handleVoiceCommand(cmd === null ? said : cmd);
+  };
+
+  recog.onend = function(){
+    listening = false;
+    clearTimeout(voiceRestartTimer);
+    if(!wantListen && voiceMode !== "command"){ voiceSetState("idle", ""); return; }
+    /* Chrome ends the session constantly; restart unless the user stopped us */
+    if(voiceRestarts > 40){ stopVoice("Speech kept stopping — tap the mic to try again."); return; }
+    voiceRestarts++;
+    voiceRestartTimer = setTimeout(function(){
+      if(!wantListen && voiceMode !== "command") return;
+      try{ recog.start(); }catch(e){ /* already starting — harmless */ }
+    }, 350);
+  };
+
+  recog.onerror = function(ev){
+    var code = ev && ev.error ? ev.error : "unknown";
+    if(code === "no-speech" || code === "aborted"){ return; }          /* normal, ignore */
+    if(code === "not-allowed" || code === "service-not-allowed" || code === "audio-capture"){
+      stopVoice(voiceError(code));                                     /* fatal — do not loop */
+      return;
+    }
+    toast("🎙️ " + voiceError(code));
+  };
+
+  var mb = $("mic-btn");
+  if(mb){ mb.style.display = ""; mb.title = "Voice input — tap to talk"; }
+  refreshVoiceUI();
+}
+
+/* "hey jarvis, what's the weather" → "what's the weather"; no wake word → null */
+function stripWakeWord(text){
+  var t = String(text || "").trim();
+  var re = /^(?:hey|hi|ok|okay|oi)?\s*,?\s*(?:jarvis|j\.a\.r\.v\.i\.s\.?)\b[\s,.!?:;-]*/i;
+  if(re.test(t)) return t.replace(re, "").trim();
+  return null;
+}
+
+function handleVoiceCommand(cmd){
+  if(!cmd){ listenForCommand(); return; }
+  voiceSilenceReset();
+  var inp = $("input");
+  if(inp) inp.value = cmd;
+  if(state.voiceAutoSend){ sendFromInput(); }
+  else { toast("🎙️ Heard: " + cmd.slice(0, 60)); if(inp) inp.focus(); }
+}
+
+function listenForCommand(){
+  voiceSetState("command");
+  voiceSilenceReset();
+}
+
+function voiceSilenceReset(){
+  clearTimeout(voiceSilenceTimer);
+  if(!wantListen) return;
+  voiceSilenceTimer = setTimeout(function(){
+    if(voiceMode !== "command") return;
+    voiceSetState("wake");
+  }, 12000);
+}
+
+function startVoice(wake){
+  wantListen = !!wake;
+  var hint = voiceSetupHint();
+  if(hint){ toast("🎙️ " + hint, 6000); return; }
+  if(!recog) return;
+  clearTimeout(voiceRestartTimer);
+  try{
+    recog.start();
+    listening = true;
+    voiceRestarts = 0;
+    voiceSetState(wantListen ? "wake" : "command");
+    toast(wantListen ? "👂 Waiting for “hey jarvis”" : "🎙️ Listening…", 2600);
+    voiceSilenceReset();
+  }catch(e){
+    /* start() throws if it is already running — treat as "we are listening" */
+    if(!listening) toast("🎙️ " + (e.message || "could not start the microphone"));
+  }
+}
+function stopVoice(msg){
+  wantListen = false;
+  clearTimeout(voiceRestartTimer); clearTimeout(voiceSilenceTimer);
+  try{ if(recog) recog.stop(); }catch(e){}
+  listening = false;
+  voiceSetState("idle", "");
+  if(msg) toast("🎙️ " + msg, 6000);
 }
 function toggleMic(){
-  if(!recog) return;
-  if(listening){ recog.stop(); return; }
-  try{
-    recog.start(); listening = true; $("mic-btn").classList.add("rec");
-    toast("🎙️ Listening...");
-  }catch(e){}
+  if(!recog){ toast("🎙️ " + (voiceSetupHint() || "speech recognition unavailable")); return; }
+  if(listening || wantListen) stopVoice();
+  else startVoice(false);
 }
+function toggleWake(){
+  if(!recog){ toast("🎙️ " + (voiceSetupHint() || "speech recognition unavailable")); return; }
+  if(wantListen) stopVoice();
+  else startVoice(true);
+}
+function refreshVoiceUI(){
+  var w = $("wake-btn");
+  if(w){
+    w.style.display = voiceSupported() ? "" : "";
+    w.classList.toggle("on", !!wantListen);
+    w.textContent = wantListen ? "👂" : "💤";
+    w.title = wantListen ? "Wake word ON — listening for “hey jarvis”" : "Wake word OFF — tap to listen for “hey jarvis”";
+  }
+}
+
+/* JARVIS must not transcribe its own voice. */
+var _speak = speak;
+speak = function(text){
+  speakUntil = Date.now() + Math.min(12000, 1200 + String(text || "").length * 55);
+  try{ _speak(text); }catch(e){}
+};
 
 /* ---------- boot ---------- */
 function updateHeader(){
@@ -3153,7 +3508,11 @@ window.JARVIS = {
   retrieveKnowledge: retrieveKnowledge, storageUse: storageUse,
   SKILLS: SKILLS, TEACHINGS: TEACHINGS, matchSkills: matchSkills, matchTeachings: matchTeachings,
   skillBlock: skillBlock, teachingBlock: teachingBlock, skillMenu: skillMenu, teachLesson: teachLesson,
-  renderSkills: renderSkills, activeSkills: activeSkills, teachingLibrary: teachingLibrary, skillById: skillById
+  renderSkills: renderSkills, activeSkills: activeSkills, teachingLibrary: teachingLibrary, skillById: skillById,
+  stripWakeWord: stripWakeWord, voiceSupported: voiceSupported, voiceSetupHint: voiceSetupHint,
+  prefetchLive: prefetchLive, cityFromQuery: cityFromQuery, doSearch: doSearch,
+  get voiceMode(){ return voiceMode; }, startVoice: startVoice, stopVoice: stopVoice,
+  testVoice: testVoice, LIVE_INTENTS: LIVE_INTENTS
 };
 
 if("serviceWorker" in navigator && location.protocol.indexOf("http") === 0){

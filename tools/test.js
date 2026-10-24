@@ -355,12 +355,103 @@ async function suiteSkills() {
   w.state.skillsOff = [];
 }
 
+
+/* ============ SUITE 6 — voice, wake word, live data ============ */
+async function suiteVoice() {
+  console.log("\n── SUITE 6 · voice + wake word + live data ──");
+  const WEATHER = { current:{temperature_2m:31.4,relative_humidity_2m:58,apparent_temperature:34.1,precipitation:0,weather_code:2,wind_speed_10m:9.2},
+    daily:{time:["2026-10-24"],weather_code:[2],temperature_2m_max:[33],temperature_2m_min:[22],precipitation_probability_max:[10]} };
+  let fake = null;
+  const errs = [];
+  const vc = new VirtualConsole();
+  vc.on("jsdomError", (e) => errs.push(e.message));
+  const dom = new JSDOM(HTML, { runScripts:"dangerously", url:"https://x.test/", virtualConsole:vc, pretendToBeVisual:true,
+    beforeParse(w){
+      w.isSecureContext = true;
+      class FakeSR {
+        constructor(){ fake = this; this.started = false; }
+        start(){ if(this.started) throw new Error("already started"); this.started = true; if(this.onstart) this.onstart(); }
+        stop(){ this.started = false; if(this.onend) this.onend(); }
+        abort(){ this.started = false; }
+      }
+      w.SpeechRecognition = FakeSR;
+      w.speechSynthesis = { getVoices:()=>[], speak(){}, cancel(){} };
+      w.SpeechSynthesisUtterance = function(t){ this.text = t; };
+    }});
+  const w = dom.window, d = w.document;
+  await new Promise(r => setTimeout(r, 700));
+  const J = w.JARVIS;
+  const say = (txt) => fake.onresult({ resultIndex:0, results:[{ isFinal:true, 0:{ transcript:txt }, length:1 }] });
+
+  /* wake-word parsing */
+  assert('wake: "hey jarvis, ..." strips the wake word', J.stripWakeWord("hey jarvis, what's the weather") === "what's the weather");
+  assert('wake: "jarvis ..." works without "hey"', J.stripWakeWord("Jarvis what is BTC") === "what is BTC");
+  assert("wake: no wake word returns null", J.stripWakeWord("just chatting") === null);
+  assert("wake: bare wake word leaves an empty command", J.stripWakeWord("hey jarvis") === "");
+  assert("wake: the acronym works", J.stripWakeWord("hey j.a.r.v.i.s. status") === "status");
+
+  /* engine + buttons */
+  assert("speech engine detected", J.voiceSupported() === true);
+  assert("no setup blocker on https", J.voiceSetupHint() === "", J.voiceSetupHint());
+  assert("microphone button visible", d.getElementById("mic-btn").style.display !== "none");
+  assert("wake button visible", d.getElementById("wake-btn").style.display !== "none");
+
+  /* network stubs */
+  w.fetch = async (u) => { u = String(u);
+    if(u.includes("geocoding")) return { ok:true, json:async()=>({results:[{name:"Kanpur",admin1:"UP",country:"India",latitude:26.4,longitude:80.3}]}), text:async()=>"" };
+    if(u.includes("open-meteo")) return { ok:true, json:async()=>WEATHER, text:async()=>"" };
+    if(u.includes("coingecko")) return { ok:true, json:async()=>({bitcoin:{usd:67000,inr:5639000,usd_24h_change:2.1,usd_market_cap:1.3e12}}), text:async()=>"" };
+    if(u.includes("r.jina.ai")) return { ok:true, json:async()=>({}), text:async()=>"Bitcoin is trading at sixty seven thousand dollars today according to live market data." };
+    return { ok:false, status:404, json:async()=>({}), text:async()=>"" }; };
+
+  /* auto live */
+  const pl = await J.prefetchLive("what is the weather in Kanpur");
+  assert("live data prefetched for a weather question", /LIVE DATA/.test(pl) && /31\.4/.test(pl));
+  const pc = await J.prefetchLive("what is bitcoin at right now");
+  assert("live data prefetched for a price question", /crypto/.test(pc) && /67,000|67000/.test(pc));
+  assert("small talk prefetches nothing", (await J.prefetchLive("hello jarvis how are you")) === "");
+  const sr = await J.doSearch("bitcoin price today");
+  assert("search returns real result text (not just an instant answer)", /Web results/.test(sr) && /sixty seven thousand/.test(sr));
+
+  /* end-to-end wake flow */
+  J.startVoice(true);
+  await new Promise(r => setTimeout(r, 50));
+  assert("wake mode engaged", J.voiceMode === "wake", J.voiceMode);
+  assert("status pill shows the wake word", /hey jarvis/.test(d.getElementById("voice-state").textContent));
+
+  let calls = [];
+  w.complete = async (msgs) => { calls.push(msgs); return "Sir, it is 31.4°C in Kanpur."; };
+  say("hey jarvis what is the weather in kanpur");
+  await new Promise(r => setTimeout(r, 400));
+  assert("wake word produced a real answer", /31\.4/.test(d.getElementById("messages").textContent));
+  assert("live data reached the model call", calls.some(m => m.some(x => /LIVE DATA/.test(String(x.content || "")))));
+  assert("auto-send cleared the input", d.getElementById("input").value === "");
+
+  /* no echo loop, no false wakes */
+  calls = [];
+  w.speakUntil = Date.now() + 5000;
+  say("hey jarvis tell me a joke");
+  await new Promise(r => setTimeout(r, 250));
+  assert("ignores speech while it is speaking (no echo loop)", calls.length === 0, calls.length);
+  w.speakUntil = 0;
+  calls = [];
+  const before = d.getElementById("messages").textContent.length;
+  say("the weather outside is nice today");
+  await new Promise(r => setTimeout(r, 250));
+  assert("ignores speech without the wake word", calls.length === 0 && d.getElementById("messages").textContent.length === before);
+
+  J.stopVoice();
+  assert("stop returns to idle", J.voiceMode === "idle" && fake.started === false, J.voiceMode);
+  assert("no page errors from voice", errs.length === 0, errs.slice(0, 2).join(" | "));
+}
+
 (async () => {
   await suitePerf();
   await suiteChat();
   await suiteContext();
   await suiteAuditFixes();
   await suiteSkills();
+  await suiteVoice();
   finish();
 })().catch((e) => {
   console.log("FAIL · suite crashed: " + (e && e.stack ? e.stack : e));
