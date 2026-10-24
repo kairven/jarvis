@@ -6,6 +6,11 @@
 Open that link on any device — nothing to install. On a phone: open it in Chrome →
 menu → **Add to Home Screen** → JARVIS launches full-screen like a native app.
 
+> **First time only:** if that link is not live yet, flip one switch —
+> **Settings → Pages → Build and deployment → Source: “GitHub Actions”**.
+> The included workflow (`.github/workflows/pages.yml`) then publishes the app on
+> every push to `main`. No build step, no config.
+
 One file. No installation. No programming. Free forever.
 
 ---
