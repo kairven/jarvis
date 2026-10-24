@@ -58,8 +58,10 @@
   .dot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 6px var(--red)}
   .dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
 
-  nav{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid var(--line);background:var(--panel)}
+  nav{display:flex;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;border-bottom:1px solid var(--line);background:var(--panel)}
+  nav::-webkit-scrollbar{display:none}
   nav button{
+    flex:1 0 auto;min-width:64px;
     background:none;border:none;color:var(--dim);padding:10px 4px;cursor:pointer;
     font-size:11px;letter-spacing:1px;border-bottom:2px solid transparent;font-family:inherit;
   }
@@ -176,6 +178,32 @@
     .header-right .status-chip .lbl{display:none}
     .page{padding:10px}
   }
+
+  /* ---------- SUPERCHARGE: tool belt ---------- */
+  .tool-card{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(180deg,rgba(12,26,42,.75),rgba(8,18,30,.6));margin-bottom:9px;transition:opacity .2s,border-color .2s}
+  .tool-card:hover{border-color:var(--line2)}
+  .tool-card.off{opacity:.45}
+  .tool-card .temoji{font-size:22px;line-height:1;flex-shrink:0;filter:drop-shadow(0 0 8px rgba(55,224,255,.35))}
+  .tool-card .tmain{flex:1;min-width:0}
+  .tool-card .tmain b{font-size:13.5px;color:var(--text)}
+  .tool-card .tkey{font-size:10.5px;color:var(--cyan-dim);border:1px solid var(--line2);border-radius:5px;padding:1px 5px;margin-left:4px}
+  .tool-card .tmain p{font-size:12px;color:var(--dim);line-height:1.5;margin-top:3px}
+  .tool-card .tmain .tsample{color:var(--gold);opacity:.85;font-size:11px}
+  .tool-card .tside{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+  .logrow{border-left:2px solid var(--line2);padding:4px 0 4px 10px;margin-bottom:8px}
+  .loghead{font-size:11px;color:var(--dim);margin-bottom:3px}
+  .loghead .ok{color:var(--green)} .loghead .bad{color:var(--red)}
+  .logrow pre{font-size:11px;color:var(--text);background:#050d16;border:1px solid var(--line);border-radius:6px;padding:8px;white-space:pre-wrap;max-height:170px;overflow:auto}
+  .trace{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;padding-top:8px;border-top:1px dashed var(--line)}
+  .chip{font-size:10.5px;padding:2px 7px;border-radius:20px;border:1px solid var(--line2);color:var(--dim);background:rgba(55,224,255,.05)}
+  .chip.ok{border-color:rgba(74,222,128,.45);color:#9ff0bd}
+  .chip.bad{border-color:rgba(255,107,107,.45);color:#ffb3b3}
+  .repo{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px dashed var(--line);font-size:12.5px}
+  .repo:last-child{border-bottom:0}
+  .repo .badge{font-size:9.5px;letter-spacing:.04em;padding:2px 6px;border-radius:5px;flex-shrink:0;border:1px solid var(--line2);color:var(--cyan)}
+  .repo .badge.next{color:var(--gold);border-color:rgba(255,200,92,.4)}
+  .repo a{color:var(--cyan)}
+  @media (max-width:640px){ .tool-card{flex-wrap:wrap} .tool-card .tside{flex-direction:row;width:100%;justify-content:flex-end} }
 </style>
 </head>
 <body>
@@ -196,6 +224,7 @@
     <button data-tab="chat" class="active"><span class="ic">💬</span>CHAT</button>
     <button data-tab="memory"><span class="ic">🧠</span>MIND</button>
     <button data-tab="knowledge"><span class="ic">📚</span>KNOWLEDGE</button>
+    <button data-tab="tools"><span class="ic">🛠️</span>TOOLS</button>
     <button data-tab="security"><span class="ic">🛡️</span>SECURITY</button>
     <button data-tab="control"><span class="ic">🎛️</span>CONTROL</button>
     <button data-tab="settings"><span class="ic">⚙️</span>SETUP</button>
@@ -263,12 +292,59 @@
         <h3>📚 ADD KNOWLEDGE</h3>
         <div class="row"><input type="text" id="know-title" placeholder="Title... e.g. My Business Plan v2"></div>
         <textarea class="field" id="know-text" placeholder="Paste the content here..."></textarea>
-        <div class="row"><button class="btn" onclick="addKnowledge()">📥 INGEST</button></div>
+        <div class="row"><button class="btn" onclick="addKnowledge()">📥 INGEST</button>
+          <label class="btn gold" style="display:inline-block">📄 ADD A FILE<input type="file" id="know-file" accept=".pdf,.txt,.md,.csv,.json,application/pdf,text/*" style="display:none" onchange="ingestFile(event)"></label></div>
+        <p class="mono" style="font-size:11px;color:var(--dim);line-height:1.6">PDF → text is extracted <b>on your device</b> with Mozilla's pdf.js. Nothing is uploaded anywhere. Works for text-based PDFs (scans need OCR).</p>
       </div>
       <div class="card">
         <h3>STORED DOCUMENTS</h3>
         <div id="know-list"></div>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ TOOLS ============ -->
+  <section class="page" id="tools-page">
+    <div class="panel">
+      <div class="banner info">🛠️ <b>SUPERCHARGE TOOL BELT</b> — <b><span id="tool-count">21 / 21</span></b> live tools, every one <b>free and keyless</b>. I call them myself mid-conversation, or you can call any of them directly: <code class="mono">/weather Kanpur</code>, <code class="mono">/calc 18% of 4500</code>, <code class="mono">/github facebook/react</code>. Nothing here needs an account.</div>
+
+      <div class="card">
+        <h3>⚡ ARSENAL</h3>
+        <div id="tools-grid"></div>
+      </div>
+
+      <div class="card">
+        <h3>📡 ACTIVITY — WHAT I RAN, AND WHAT IT COST</h3>
+        <div id="tool-log"></div>
+        <div class="row"><button class="btn small" onclick="clearToolLog()">CLEAR LOG</button></div>
+      </div>
+
+      <div class="card">
+        <h3>🐙 SUPERCHARGE PACK — OPEN SOURCE BEHIND THIS</h3>
+        <p>Real repositories doing the heavy lifting. <b style="color:var(--cyan)">INTEGRATED</b> = already running in your browser, zero install. <b style="color:var(--gold)">NEXT</b> = the upgrade path for real automation.</p>
+
+        <div class="repo"><span class="badge">INTEGRATED</span><div><a href="https://github.com/pollinations/pollinations" target="_blank" rel="noopener">pollinations</a> <span class="d">— free LLM + Flux image engine (no key, no signup)</span></div></div>
+        <div class="repo"><span class="badge">INTEGRATED</span><div><a href="https://github.com/mozilla/pdf.js" target="_blank" rel="noopener">mozilla/pdf.js</a> <span class="d">— drop a PDF into KNOWLEDGE, it becomes searchable memory</span></div></div>
+        <div class="repo"><span class="badge">INTEGRATED</span><div><a href="https://github.com/open-meteo/open-meteo" target="_blank" rel="noopener">open-meteo</a> <span class="d">— free open-source weather, no API key</span></div></div>
+        <div class="repo"><span class="badge">INTEGRATED</span><div><a href="https://github.com/ourongxing/newsnow" target="_blank" rel="noopener">newsnow</a> / <a href="https://github.com/HackerNews/API" target="_blank" rel="noopener">HackerNews API</a> <span class="d">— live tech headlines</span></div></div>
+        <div class="repo"><span class="badge">INTEGRATED</span><div><a href="https://github.com/J535D165/CoronaWhy-OpenAlex" target="_blank" rel="noopener">OpenAlex</a> · <a href="https://github.com/meetDeveloper/freeDictionaryAPI" target="_blank" rel="noopener">freeDictionaryAPI</a> <span class="d">— 250M papers + dictionary, keyless</span></div></div>
+        <div class="repo"><span class="badge">INTEGRATED</span><div><a href="https://github.com/jina-ai/reader" target="_blank" rel="noopener">jina-ai/reader</a> <span class="d">— turns any URL into clean text I can reason over (<code class="mono">/read</code>)</span></div></div>
+
+        <div class="repo"><span class="badge next">NEXT</span><div><a href="https://github.com/ollama/ollama" target="_blank" rel="noopener">ollama/ollama</a> <span class="d">— run Llama/Qwen on your own machine: a brain that is 100% private</span></div></div>
+        <div class="repo"><span class="badge next">NEXT</span><div><a href="https://github.com/tesseract-ocr/tesseract" target="_blank" rel="noopener">tesseract.js</a> <span class="d">— OCR: photograph a document, I read it</span></div></div>
+        <div class="repo"><span class="badge next">NEXT</span><div><a href="https://github.com/SYSTRAN/faster-whisper" target="_blank" rel="noopener">faster-whisper</a> <span class="d">— local speech-to-text (already wired into agent.py)</span></div></div>
+        <div class="repo"><span class="badge next">NEXT</span><div><a href="https://github.com/n8n-io/n8n" target="_blank" rel="noopener">n8n</a> <span class="d">— real automation: email, sheets, webhooks, scheduled jobs</span></div></div>
+        <div class="repo"><span class="badge next">NEXT</span><div><a href="https://github.com/mem0ai/mem0" target="_blank" rel="noopener">mem0</a> <span class="d">— a proper long-term memory layer to replace the localStorage Mind</span></div></div>
+        <div class="repo"><span class="badge next">NEXT</span><div><a href="https://github.com/searxng/searxng" target="_blank" rel="noopener">SearXNG</a> <span class="d">— self-hosted search, no rate limits, no tracking</span></div></div>
+      </div>
+
+      <div class="card">
+        <h3>⌨️ DIRECT COMMANDS</h3>
+        <p class="mono" style="font-size:11.5px;line-height:1.9;color:var(--dim)">
+          /tool &lt;name&gt; &lt;args&gt; · /calc · /units · /time · /weather · /forex · /crypto · /wiki · /news · /github · /papers · /define · /translate · /read · /qr · /random · /timer · /imagine · /search
+        </p>
+      </div>
+      <div style="height:30px"></div>
     </div>
   </section>
 
@@ -417,8 +493,8 @@
 <script>
 "use strict";
 /* ================================================================
-   J.A.R.V.I.S. MK-II v3 — single-folder personal AI
-   8 free LLM brains + agent loop + image engine + PWA
+   J.A.R.V.I.S. MK-II v4 — single-folder personal AI
+   8 free LLM brains + 21-tool agent loop + image engine + PWA
    Mind: localStorage on your device — nothing leaves you
    ================================================================ */
 
@@ -435,7 +511,7 @@ var store = (function(){
 
 var DEFAULTS = {
   temp:0.6, route:"auto", board:true, autoLearn:true, voiceOut:false, masterPrompt:"", agentUrl:"", agentToken:"",
-  brains:{}, memories:[], knowledge:[], tasks:[], chat:[]
+  brains:{}, memories:[], knowledge:[], tasks:[], chat:[], toolsOff:[]
 };
 
 /* ---------- 8 FREE LLM BRAINS — registry ---------- */
@@ -481,7 +557,7 @@ function toast(msg, ms){
 function nowStr(){ return new Date().toLocaleString("en-IN", {dateStyle:"medium", timeStyle:"short"}); }
 
 /* ---------- tabs ---------- */
-var tabPages = { chat:"chat-page", memory:"memory-page", knowledge:"knowledge-page", security:"security-page", control:"control-page", settings:"settings-page" };
+var tabPages = { chat:"chat-page", memory:"memory-page", knowledge:"knowledge-page", tools:"tools-page", security:"security-page", control:"control-page", settings:"settings-page" };
 document.querySelectorAll("#tabs button").forEach(function(b){
   b.addEventListener("click", function(){ switchTab(b.getAttribute("data-tab")); });
 });
@@ -490,6 +566,7 @@ function switchTab(name){
   for(var p in tabPages){ $(tabPages[p]).classList.toggle("active", p===name); }
   if(name==="memory"){ renderMemory(); renderTasks(); updateStats(); }
   if(name==="knowledge"){ renderKnowledge(); updateStats(); }
+  if(name==="tools"){ renderTools(); }
   if(name==="control"){ fillAgentCfg(); pingAgent(); }
   if(name==="settings"){ fillSettings(); }
   if(name==="chat"){ scrollBottom(); }
@@ -543,19 +620,27 @@ function mdToHtml(src){
 }
 
 /* ---------- chat rendering ---------- */
-function addMsg(role, content, persist){
-  state.chat.push({r:role, c:content, t:Date.now()});
+function addMsg(role, content, persist, trace){
+  state.chat.push({r:role, c:content, t:Date.now(), tr:(trace && trace.length) ? trace : undefined});
   if(state.chat.length > 300) state.chat = state.chat.slice(-300);
   if(persist !== false) save();
-  renderMsg(role, content);
+  renderMsg(role, content, trace);
   updateStats();
   scrollBottom();
 }
-function renderMsg(role, content){
+function renderMsg(role, content, trace){
   var wrap = document.createElement("div");
   wrap.className = "msg " + (role === "user" ? "user" : "jarvis");
   var who = role === "user" ? "YOU" : "J.A.R.V.I.S.";
-  var html = '<div class="who mono">'+who+'</div><div class="bubble">' + (role==="user" ? "<p>"+esc(content).replace(/\n/g,"<br>")+"</p>" : mdToHtml(content)) + "</div>";
+  var chips = "";
+  if(role !== "user" && trace && trace.length){
+    chips = '<div class="trace">' + trace.map(function(t){
+      var tool = toolById(t.id);
+      return '<span class="chip ' + (t.ok ? "ok" : "bad") + '" title="' + esc(String(t.args || "")) + '">' +
+        (tool ? tool.emoji : "🛠️") + " " + esc(t.id) + " " + (t.ok ? "✓" : "✗") + " " + t.ms + "ms</span>";
+    }).join("") + "</div>";
+  }
+  var html = '<div class="who mono">'+who+'</div><div class="bubble">' + (role==="user" ? "<p>"+esc(content).replace(/\n/g,"<br>")+"</p>" : mdToHtml(content)) + chips + "</div>";
   wrap.innerHTML = html;
   $("messages").appendChild(wrap);
 }
@@ -574,23 +659,32 @@ function clearChat(){
 }
 function welcome(){
   renderMsg("jarvis",
-"Good day, sir. **J.A.R.V.I.S. MK-II v3 online.** All systems nominal.\n\nI am your personal AI — my mind lives **on your device**, my brains in the **free cloud**. The more we talk, the more I learn about you.\n\n| Command | What I do |\n|---|---|\n| `/search quantum computing` | I search the web live and structure the findings |\n| `/imagine a neon cyberpunk arc reactor` | I generate an AI image (Flux — free) |\n| `/brief` | Your daily operator brief |\n| `/status` | System diagnostic |\n| `/task call bank tomorrow` | Operator mode: I track your commitments |\n| `remember I have exams in December` | I store it in my Mind forever |\n| `/security audit my phone` | Defensive security guidance |\n| `/run volume up` | Control your device \u2014 with the free agent running |\n\n**Zero setup:** I run on my FREE brain right now — no account, no key. I carry **8 free brains** with auto-switching, an **image engine**, and an **agent loop** (I can summon search/images mid-thought). Connect more brains in ⚙️ **SETUP** for superintelligence mode. Now say *\"JARVIS, introduce yourself\"* — or try `/imagine a neon arc reactor`.");
+"Good day, sir. **J.A.R.V.I.S. MK-II v4 online.** All systems nominal.\n\nI am your personal AI — my mind lives **on your device**, my brains in the **free cloud**. The more we talk, the more I learn about you.\n\n| Command | What I do |\n|---|---|\n| `/search quantum computing` | I search the web live and structure the findings |\n| `/imagine a neon cyberpunk arc reactor` | I generate an AI image (Flux — free) |\n| `/brief` | Your daily operator brief |\n| `/status` | System diagnostic |\n| `/task call bank tomorrow` | Operator mode: I track your commitments |\n| `remember I have exams in December` | I store it in my Mind forever |\n| `/security audit my phone` | Defensive security guidance |\n| `/run volume up` | Control your device \u2014 with the free agent running |\n| `/weather Kanpur` | Live weather + 3-day forecast |\n| `/calc 18% of 4500` | Exact math, not a guess |\n| `/tools` | See all 21 live tools |\n\n**Zero setup:** I run on my FREE brain right now — no account, no key. I carry **8 free brains** with auto-switching, an **image engine**, and a **21-tool belt** I summon myself mid-thought (weather, prices, news, math, GitHub, papers, page reader…). Connect more brains in ⚙️ **SETUP** for superintelligence mode. Now say *\"JARVIS, introduce yourself\"* — or try `/weather Kanpur`, `/calc 18% of 4500`, or `/tools`.");
 }
 
 /* ---------- THE BUILT-IN MASTER PROMPT (polished prompt engineering, v3) ---------- */
 function builtinCore(){
-  return "You are J.A.R.V.I.S. MK-II (v3) — the personal AI system of Mohd Sameer Khan. Persona: calm, precise, loyal, quietly witty like Jarvis in Iron Man; address him as \"sir\" naturally, never overdone.\n\n" +
+  return "You are J.A.R.V.I.S. MK-II (v4) — the personal AI system of Mohd Sameer Khan. Persona: calm, precise, loyal, quietly witty like Jarvis in Iron Man; address him as \"sir\" naturally, never overdone.\n\n" +
   "PRIME DIRECTIVES:\n" +
   "1. Be USEFUL: every answer is actionable and specific — markdown structure, numbered steps, tables when they help. Zero fluff.\n" +
   "2. Be HONEST: never invent facts, sources, or numbers. If uncertain, say so and explain how to verify.\n" +
   "3. PROTECT sir: defensive security only — securing HIS OWN devices, accounts, network, and legal cybersecurity learning (CTFs, TryHackMe, picoCTF). If asked to attack or access systems without the owner's authorization: refuse that in ONE line, then give the closest legal alternative. Never lecture at length.\n" +
   "4. Think in systems: for decisions show trade-offs, second-order effects, and what could break.\n" +
   "5. Match depth to the question: small talk stays short; strategy gets full structure.\n\n" +
-  "TOOLS PROTOCOL (the app executes these automatically):\n" +
-  "- If you need live/current web information, reply with ONLY this on the first line: [SEARCH: concise search query]. Results will be returned to you, then answer using them with cited links.\n" +
-  "- If sir asks you to draw, imagine, or generate a picture, reply with ONLY this on the first line: [IMAGE: detailed visual description in English — subject, style, lighting, mood, separated by commas].\n" +
-  "- If sir asks to control or check his DEVICES (volume, battery, torch, screenshot, open apps/URLs, notifications, make the device speak, system info), reply with ONLY this on the first line: [DEVICE: action arg]. Valid: status | battery | volume up/down/mute/0-100 | speak <text> | open <url> | notify <text> | torch on/off | screenshot | sys <sysinfo|disk|mem|processes|network>. The app runs it on his device via the local agent and returns the result; then answer briefly using it.\n" +
-"- Never mention these tool codes inside normal answers, and never output a tool code twice.\n";
+  "TOOLS: you have a live tool belt (listed below the directives) — real, working tools, not suggestions. Whenever an answer depends on live or exact data (prices, weather, time, news, a specific repo, paper, word, page, calculation), USE A TOOL INSTEAD OF GUESSING.\n" +
+  "To use one, write it on its own line: [TOOL: id arguments]. The app executes it and hands you the real result; then you answer.\n" +
+  "NEVER invent a tool result, never show a [TOOL: ...] line in your final answer, and never call the same tool twice for the same information.\n";
+}
+
+/* ---------- the live tool catalog injected into every prompt ---------- */
+function toolCatalog(){
+  var on = enabledTools();
+  var p = "\n=== LIVE TOOL BELT v2 — " + on.length + " tools available THIS turn (free, keyless, already working) ===\n";
+  p += "To call one, write it on its own line: [TOOL: id arguments]\n";
+  p += "Arguments are PLAIN TEXT after the id — no JSON, no quotes, no markdown. Up to 3 tools per reply. The app runs them instantly and returns real results.\n";
+  p += "Use a tool whenever the answer depends on live or exact data. Chain them when useful (e.g. read a page, then summarise it).\n\n";
+  on.forEach(function(t){ p += "- " + t.id + " — " + t.desc + "   e.g. [TOOL: " + t.id + (t.sample ? " " + t.sample : "") + "]\n"; });
+  return p;
 }
 
 /* ---------- system prompt assembly ---------- */
@@ -598,6 +692,7 @@ function systemPrompt(opts){
   opts = opts || {};
   var now = new Date().toString();
   var p = (state.masterPrompt && state.masterPrompt.trim()) ? state.masterPrompt.trim() + "\n\n" : builtinCore();
+  p += toolCatalog();
   p += "Current date/time: " + now + "\n\n";
 
   p += "=== MEMORY — facts about Mohd Sameer Khan (use naturally, don't recite unless asked) ===\n";
@@ -724,41 +819,613 @@ async function complete(messages){
   throw new Error(errs.length ? errs.join(" | ") : "no brain configured — open SETUP");
 }
 
-/* ---------- AGENT LOOP — the model can summon tools mid-thought ---------- */
-async function agentRun(msgs){
-  var toolNote = "";
-  for(var round = 0; round < 3; round++){
-    var attempt = msgs.slice();
-    if(toolNote) attempt.push({ role:"system", content: toolNote });
-    var reply = await complete(attempt);
-    var sm = /^\s*\[SEARCH:\s*([^\]]{2,110})\]\s*/i.exec(reply);
-    var im = /^\s*\[IMAGE:\s*([^\]]{2,160})\]\s*/i.exec(reply);
-    var dm = /^\s*\[DEVICE:\s*([a-z_]+)(?:[:\s]([^\]]{0,140}))?\]\s*/i.exec(reply);
-    if(sm && round < 2){
-      toast("🛠️ Agent is searching: " + sm[1]);
-      toolNote = "=== TOOL RESULT — LIVE WEB SEARCH for \"" + sm[1] + "\" ===\n" + (await doSearch(sm[1])) + "\n=== Use these results to answer sir's original question. Cite source links. Do NOT output a tool code again. ===";
-      continue;
+/* ================================================================
+   SUPERCHARGE TOOL BELT v1 — 21 keyless tools the AI can call itself
+   ------------------------------------------------------------------
+   Protocol: the model writes  [TOOL: id arguments]  on its own line.
+   Arguments are plain text (no JSON) so small models can use it too.
+   Every tool is free, keyless, and runs in the browser — except
+   `device`, which talks to the local agent.py.
+   Legacy codes [SEARCH:]/[IMAGE:]/[DEVICE:] still work (aliases).
+   ================================================================ */
+
+var toolLog = [];              /* in-memory activity feed */
+
+/* ---------- tiny network helpers (with timeout) ---------- */
+async function getJSON(url, headers, ms){
+  var ctl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  var timer = setTimeout(function(){ if(ctl) ctl.abort(); }, ms || 14000);
+  try{
+    var r = await fetch(url, { headers: headers || {}, signal: ctl ? ctl.signal : undefined });
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json();
+  } finally { clearTimeout(timer); }
+}
+async function getText(url, headers, ms){
+  var ctl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  var timer = setTimeout(function(){ if(ctl) ctl.abort(); }, ms || 18000);
+  try{
+    var r = await fetch(url, { headers: headers || {}, signal: ctl ? ctl.signal : undefined });
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return await r.text();
+  } finally { clearTimeout(timer); }
+}
+function shortNum(n){
+  if(typeof n !== "number" || !isFinite(n)) return String(n);
+  var a = Math.abs(n);
+  if(a >= 1e9) return (Math.round(n / 1e8) / 10) + "B";
+  if(a >= 1e6) return (Math.round(n / 1e5) / 10) + "M";
+  if(a >= 1e3) return (Math.round(n / 100) / 10) + "k";
+  return String(Math.round(n * 100) / 100);
+}
+function num(n){
+  if(typeof n !== "number" || !isFinite(n)) return String(n);
+  var a = Math.abs(n);
+  if(a !== 0 && (a < 1e-6 || a >= 1e15)) return n.toExponential(6);
+  return (Math.round(n * 1e8) / 1e8).toLocaleString("en-IN", { maximumFractionDigits: 8 });
+}
+
+/* ---------- SAFE MATH — recursive descent parser, no eval() ---------- */
+function mathEval(src){
+  var s = String(src || "").toLowerCase()
+    .replace(/[×·]/g, "*").replace(/÷/g, "/").replace(/–|—/g, "-")
+    .replace(/,(\d{3})\b/g, "$1")
+    .replace(/\bplus\b/g, "+").replace(/\bminus\b/g, "-")
+    .replace(/\btimes\b|\bmultiplied by\b/g, "*").replace(/\bdivided by\b/g, "/")
+    .replace(/(\d+(?:\.\d+)?)\s*%\s*of\b/g, "($1/100)*")
+    .replace(/(\d+(?:\.\d+)?)\s*%/g, "($1/100)")
+    .replace(/\bmod\b/g, "%")
+    .replace(/\s+/g, "");
+  if(!s) throw new Error("nothing to calculate");
+  if(!/^[0-9a-z+\-*/%^(),.]+$/.test(s)) throw new Error("unsupported characters in expression");
+  var i = 0;
+  function peek(){ return s[i]; }
+  function eat(c){ if(s[i] === c){ i++; return true; } return false; }
+  function expr(){
+    var v = term();
+    for(;;){
+      if(eat("+")) v += term();
+      else if(eat("-")) v -= term();
+      else return v;
     }
-    if(dm && round < 2){
-      if(!state.agentUrl){
-        toolNote = "=== TOOL RESULT === The device agent is not connected. Tell sir in ONE short line: open the CONTROL tab, start agent.py on his device, paste its URL + token. Do NOT use tool codes again. ===";
+  }
+  function term(){
+    var v = unary();
+    for(;;){
+      if(eat("*")) v *= unary();
+      else if(eat("/")) v /= unary();
+      else if(eat("%")) v %= unary();
+      else return v;
+    }
+  }
+  function unary(){
+    if(eat("-")) return -unary();
+    if(eat("+")) return unary();
+    return power();
+  }
+  function power(){
+    var base = primary();
+    if(eat("^")) return Math.pow(base, unary());
+    return base;
+  }
+  var FN = {
+    sqrt:Math.sqrt, cbrt:Math.cbrt, abs:Math.abs, round:Math.round, floor:Math.floor, ceil:Math.ceil,
+    sin:Math.sin, cos:Math.cos, tan:Math.tan, asin:Math.asin, acos:Math.acos, atan:Math.atan,
+    ln:Math.log, log:Math.log10, log2:Math.log2, exp:Math.exp, sign:Math.sign
+  };
+  var CONST = { pi:Math.PI, e:Math.E, tau:Math.PI*2 };
+  function primary(){
+    if(eat("(")){ var v = expr(); if(!eat(")")) throw new Error("missing )"); return v; }
+    var m = /^[0-9]*\.?[0-9]+/.exec(s.slice(i));
+    if(m){ i += m[0].length; return parseFloat(m[0]); }
+    var id = /^[a-z][a-z0-9]*/.exec(s.slice(i));
+    if(id){
+      i += id[0].length;
+      var name = id[0];
+      if(name === "min" || name === "max" || name === "pow" || name === "log"){
+        if(eat("(")){
+          var a = expr(), b = null;
+          if(eat(",")) b = expr();
+          if(!eat(")")) throw new Error("missing )");
+          if(name === "pow") return Math.pow(a, b);
+          if(name === "log") return (b === null) ? Math.log(a) : Math.log(b) / Math.log(a);
+          return (name === "min") ? Math.min(a, b === null ? a : b) : Math.max(a, b === null ? a : b);
+        }
+      }
+      if(FN[name]){
+        if(!eat("(")) throw new Error(name + " needs parentheses, e.g. " + name + "(9)");
+        var arg = expr();
+        if(!eat(")")) throw new Error("missing )");
+        return FN[name](arg);
+      }
+      if(name in CONST) return CONST[name];
+      throw new Error("unknown function or constant: " + name);
+    }
+    throw new Error("unexpected end of expression");
+  }
+  var out = expr();
+  if(i < s.length) throw new Error("unexpected character '" + s[i] + "'");
+  if(!isFinite(out)) throw new Error("result is not a finite number");
+  return out;
+}
+
+/* ---------- UNITS ---------- */
+var UNIT_ALIAS = {
+  m:"m", meter:"m", meters:"m", metre:"m", metres:"m",
+  km:"km", kilometer:"km", kilometers:"km", kilometre:"km", kilometres:"km", kms:"km",
+  cm:"cm", centimeter:"cm", centimeters:"cm", mm:"mm", millimeter:"mm", millimeters:"mm",
+  mi:"mi", mile:"mi", miles:"mi", yd:"yd", yard:"yd", yards:"yd", ft:"ft", foot:"ft", feet:"ft",
+  in:"in", inch:"in", inches:"in", nmi:"nmi",
+  kg:"kg", kilogram:"kg", kilograms:"kg", g:"g", gram:"g", grams:"g", mg:"mg",
+  t:"t", ton:"t", tons:"t", tonne:"t", tonnes:"t", lb:"lb", lbs:"lb", pound:"lb", pounds:"lb",
+  oz:"oz", ounce:"oz", ounces:"oz",
+  s:"s", sec:"s", secs:"s", second:"s", seconds:"s", ms:"ms", min:"min", mins:"min", minute:"min", minutes:"min",
+  h:"h", hr:"h", hrs:"h", hour:"h", hours:"h", day:"day", days:"day", week:"week", weeks:"week", year:"year", years:"year",
+  b:"b", byte:"b", bytes:"b", kb:"kb", mb:"mb", gb:"gb", tb:"tb", kbit:"kbit", mbit:"mbit", gbit:"gbit",
+  "m/s":"m/s", "km/h":"km/h", kmh:"km/h", kph:"km/h", mph:"mph", knot:"knot", knots:"knot", kn:"knot",
+  m2:"m2", "m²":"m2", sqm:"m2", "sq m":"m2", km2:"km2", "km²":"km2", ha:"ha", hectare:"ha", hectares:"ha",
+  acre:"acre", acres:"acre", ft2:"ft2", "ft²":"ft2", sqft:"ft2",
+  l:"l", liter:"l", liters:"l", litre:"l", litres:"l", ml:"ml", m3:"m3", "m³":"m3",
+  gal:"gal", gallon:"gal", gallons:"gal",
+  c:"c", celsius:"c", "°c":"c", f:"f", fahrenheit:"f", "°f":"f", k:"k", kelvin:"k"
+};
+var UNIT_TABLE = {
+  length: { m:1, km:1000, cm:0.01, mm:0.001, mi:1609.344, yd:0.9144, ft:0.3048, "in":0.0254, nmi:1852 },
+  mass: { kg:1, g:0.001, mg:1e-6, t:1000, lb:0.45359237, oz:0.028349523125 },
+  time: { s:1, ms:0.001, min:60, h:3600, day:86400, week:604800, year:31557600 },
+  data: { b:1, kb:1024, mb:1048576, gb:1073741824, tb:1099511627776, kbit:128, mbit:131072, gbit:134217728 },
+  speed: { "m/s":1, "km/h":0.2777777778, mph:0.44704, knot:0.5144444444 },
+  area: { m2:1, km2:1e6, ha:1e4, acre:4046.8564224, ft2:0.09290304 },
+  volume: { l:1, ml:0.001, m3:1000, gal:3.785411784 }
+};
+function unitConvert(input){
+  var q = String(input).toLowerCase().replace(/convert|how many|what is|\?/g, " ").replace(/\s+/g, " ").trim();
+  var m = /^(-?[\d.]+)\s*([a-z°²³\/]+)\s*(?:to|in|->|=>|=|as)\s*([a-z°²³\/]+)$/.exec(q);
+  if(!m) throw new Error("use: 10 km to mi");
+  var val = parseFloat(m[1]), from = UNIT_ALIAS[m[2]], to = UNIT_ALIAS[m[3]];
+  if(!from || !to) throw new Error("unknown unit (" + (!from ? m[2] : m[3]) + ")");
+  /* temperature is affine, not a ratio */
+  if("cfk".indexOf(from) !== -1 && "cfk".indexOf(to) !== -1){
+    var c = from === "c" ? val : from === "f" ? (val - 32) * 5/9 : val - 273.15;
+    var out = to === "c" ? c : to === "f" ? c * 9/5 + 32 : c + 273.15;
+    return num(val) + " °" + from.toUpperCase() + " = " + num(Math.round(out * 100) / 100) + " °" + to.toUpperCase();
+  }
+  var cat = null;
+  for(var k in UNIT_TABLE){ if(from in UNIT_TABLE[k] && to in UNIT_TABLE[k]) cat = k; }
+  if(!cat) throw new Error("cannot convert " + from + " to " + to + " (different kinds of quantity)");
+  var res = val * UNIT_TABLE[cat][from] / UNIT_TABLE[cat][to];
+  return num(val) + " " + from + " = " + num(Math.round(res * 1e6) / 1e6) + " " + to + "  (" + cat + ")";
+}
+
+/* ---------- WORLD CLOCK ---------- */
+var CITY_TZ = {
+  kanpur:"Asia/Kolkata", delhi:"Asia/Kolkata", newdelhi:"Asia/Kolkata", mumbai:"Asia/Kolkata", bangalore:"Asia/Kolkata",
+  bengaluru:"Asia/Kolkata", hyderabad:"Asia/Kolkata", chennai:"Asia/Kolkata", kolkata:"Asia/Kolkata", lucknow:"Asia/Kolkata",
+  "new york":"America/New_York", nyc:"America/New_York", boston:"America/New_York", washington:"America/New_York",
+  "los angeles":"America/Los_Angeles", la:"America/Los_Angeles", "san francisco":"America/Los_Angeles", sf:"America/Los_Angeles",
+  seattle:"America/Los_Angeles", chicago:"America/Chicago", denver:"America/Denver", toronto:"America/Toronto",
+  "sao paulo":"America/Sao_Paulo", "mexico city":"America/Mexico_City",
+  london:"Europe/London", paris:"Europe/Paris", berlin:"Europe/Berlin", madrid:"Europe/Madrid", rome:"Europe/Rome",
+  amsterdam:"Europe/Amsterdam", zurich:"Europe/Zurich", moscow:"Europe/Moscow", istanbul:"Europe/Istanbul",
+  dubai:"Asia/Dubai", riyadh:"Asia/Riyadh", tehran:"Asia/Tehran", karachi:"Asia/Karachi", dhaka:"Asia/Dhaka",
+  singapore:"Asia/Singapore", tokyo:"Asia/Tokyo", seoul:"Asia/Seoul", beijing:"Asia/Shanghai", shanghai:"Asia/Shanghai",
+  hongkong:"Asia/Hong_Kong", "hong kong":"Asia/Hong_Kong", bangkok:"Asia/Bangkok", jakarta:"Asia/Jakarta",
+  sydney:"Australia/Sydney", melbourne:"Australia/Melbourne", auckland:"Pacific/Auckland",
+  cairo:"Africa/Cairo", lagos:"Africa/Lagos", nairobi:"Africa/Nairobi", "cape town":"Africa/Johannesburg",
+  utc:"UTC", gmt:"UTC"
+};
+function worldClock(city){
+  var key = String(city || "").toLowerCase().trim();
+  var tz = CITY_TZ[key] || (/^[a-z]+\/[a-z_]+$/i.test(city || "") ? city : null);
+  if(!tz) throw new Error("unknown city — try: kanpur, london, tokyo, new york, or an IANA zone like Asia/Kolkata");
+  var d = new Date();
+  var f = function(t, o){ try{ return d.toLocaleString("en-IN", Object.assign({ timeZone:t }, o)); }catch(e){ return "?"; } };
+  return "🕒 " + city + " (" + tz + ")\n" +
+    "• Time: " + f(tz, { hour:"2-digit", minute:"2-digit", hour12:true }) + "\n" +
+    "• Date: " + f(tz, { weekday:"long", day:"numeric", month:"long", year:"numeric" }) + "\n" +
+    "• UTC: " + f("UTC", { dateStyle:"medium", timeStyle:"short" }) + " · India: " + f("Asia/Kolkata", { timeStyle:"short" });
+}
+
+/* ---------- WEATHER (Open-Meteo — open source, no key) ---------- */
+var WMO = {
+  0:"clear sky", 1:"mainly clear", 2:"partly cloudy", 3:"overcast", 45:"fog", 48:"depositing rime fog",
+  51:"light drizzle", 53:"drizzle", 55:"dense drizzle", 56:"freezing drizzle", 57:"dense freezing drizzle",
+  61:"slight rain", 63:"rain", 65:"heavy rain", 66:"freezing rain", 67:"heavy freezing rain",
+  71:"slight snow", 73:"snow", 75:"heavy snow", 77:"snow grains", 80:"light showers", 81:"showers", 82:"violent showers",
+  85:"snow showers", 86:"heavy snow showers", 95:"thunderstorm", 96:"thunderstorm with hail", 99:"severe thunderstorm with hail"
+};
+async function weatherNow(city){
+  var q = String(city || "").trim();
+  if(!q) throw new Error("which city? e.g. Kanpur");
+  var g = await getJSON("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(q) + "&count=1&language=en&format=json");
+  var place = g && g.results && g.results[0];
+  if(!place) throw new Error("could not find a place called \"" + q + "\"");
+  var url = "https://api.open-meteo.com/v1/forecast?latitude=" + place.latitude + "&longitude=" + place.longitude +
+    "&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m" +
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=4";
+  var d = await getJSON(url);
+  var c = d.current || {}, days = d.daily || {};
+  var out = "🌦️ " + place.name + (place.admin1 ? ", " + place.admin1 : "") + (place.country ? ", " + place.country : "") +
+    "\n• Now: " + (WMO[c.weather_code] || "weather code " + c.weather_code) + " · " + num(c.temperature_2m) + "°C" +
+    " (feels like " + num(c.apparent_temperature) + "°C)\n" +
+    "• Humidity " + num(c.relative_humidity_2m) + "% · Wind " + num(c.wind_speed_10m) + " km/h · Rain now " + num(c.precipitation) + " mm\n";
+  for(var i = 0; i < (days.time ? Math.min(3, days.time.length) : 0); i++){
+    out += "• " + days.time[i] + ": " + (WMO[days.weather_code[i]] || "—") + ", " + num(days.temperature_2m_min[i]) + "–" +
+      num(days.temperature_2m_max[i]) + "°C, rain chance " + num(days.precipitation_probability_max[i] || 0) + "%\n";
+  }
+  return out.trim();
+}
+
+/* ---------- MONEY ---------- */
+async function forexNow(input){
+  var q = String(input || "").toLowerCase().replace(/[^a-z0-9.\s]/g, " ").replace(/\s+/g, " ").trim();
+  var m = /(\d+(?:\.\d+)?)?\s*([a-z]{3})\b\s*(?:to|in|into|for|=)?\s*([a-z]{3})\b/.exec(q);
+  if(!m) m = /(\d+(?:\.\d+)?)?\s*([a-z]{3})\b/.exec(q);
+  if(!m) throw new Error("use: 100 usd inr (or just usd inr)");
+  var amount = m[1] ? parseFloat(m[1]) : 1, from = m[2].toUpperCase();
+  var to = (m[3] || (from === "INR" ? "usd" : "inr")).toUpperCase();
+  var d = await getJSON("https://open.er-api.com/v6/latest/" + from);
+  if(!d || !d.rates || !d.rates[to]) throw new Error("no rate for " + from + "→" + to);
+  var rate = d.rates[to];
+  return "💱 " + num(amount) + " " + from + " = " + num(Math.round(amount * rate * 100) / 100) + " " + to +
+    "\n• 1 " + from + " = " + num(rate) + " " + to + "  (rates updated " + (d.time_last_update_utc || "recently") + ")";
+}
+var COIN_IDS = {
+  btc:"bitcoin", bitcoin:"bitcoin", eth:"ethereum", ethereum:"ethereum", sol:"solana", solana:"solana",
+  doge:"dogecoin", dogecoin:"dogecoin", xrp:"ripple", ripple:"ripple", ada:"cardano", cardano:"cardano",
+  bnb:"binancecoin", usdt:"tether", tether:"tether", matic:"matic-network", polygon:"matic-network",
+  dot:"polkadot", ltc:"litecoin", litecoin:"litecoin", trx:"tron", shib:"shiba-inu", avax:"avalanche-2",
+  link:"chainlink", chainlink:"chainlink", atom:"cosmos", xlm:"stellar", near:"near"
+};
+async function cryptoNow(input){
+  var raw = String(input || "").toLowerCase().trim();
+  var id = COIN_IDS[raw] || raw || "bitcoin";
+  var d = await getJSON("https://api.coingecko.com/api/v3/simple/price?ids=" + encodeURIComponent(id) +
+    "&vs_currencies=usd,inr&include_24hr_change=true&include_market_cap=true");
+  var row = d[id];
+  if(!row) throw new Error("unknown coin \"" + raw + "\" — try btc, eth, sol, doge, ada, xrp");
+  var ch = typeof row.usd_24h_change === "number" ? row.usd_24h_change : 0;
+  return "🪙 " + id.toUpperCase() + "\n• $" + num(Math.round(row.usd * 100) / 100) + "  ·  ₹" + num(Math.round(row.inr * 100) / 100) +
+    "\n• 24h: " + (ch >= 0 ? "▲ +" : "▼ ") + (Math.round(ch * 100) / 100) + "%" +
+    (row.usd_market_cap ? "\n• Market cap: $" + (Math.round(row.usd_market_cap / 1e7) / 100) + "B" : "") +
+    "\n(source: CoinGecko, live)";
+}
+
+/* ---------- KNOWLEDGE SOURCES ---------- */
+async function wikiSummary(topic){
+  var q = String(topic || "").trim();
+  if(!q) throw new Error("what should I look up?");
+  try{
+    var d = await getJSON("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(q.replace(/ /g, "_")),
+      { "Accept":"application/json" });
+    if(d && d.extract) return "📖 " + d.title + "\n" + d.extract + "\n" + (d.content_urls ? d.content_urls.desktop.page : "");
+  }catch(e){ /* fall through to search */ }
+  var s = await getJSON("https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=" + encodeURIComponent(q) + "&format=json&origin=*&srlimit=3");
+  var hits = (s.query && s.query.search) || [];
+  if(!hits.length) throw new Error("nothing found for \"" + q + "\"");
+  return "📖 Best matches for \"" + q + "\":\n" + hits.map(function(h){
+    return "• " + h.title + " — " + h.snippet.replace(/<[^>]+>/g, "") + " (https://en.wikipedia.org/wiki/" + encodeURIComponent(h.title.replace(/ /g, "_")) + ")";
+  }).join("\n");
+}
+async function newsNow(topic){
+  var q = String(topic || "").trim();
+  var d = await getJSON("https://hn.algolia.com/api/v1/search?query=" + encodeURIComponent(q) + "&tags=story&hitsPerPage=6");
+  var hits = (d && d.hits) || [];
+  if(!hits.length) throw new Error("no recent stories for \"" + q + "\"");
+  return "📰 Tech headlines" + (q ? " for \"" + q + "\"" : "") + " (Hacker News):\n" + hits.map(function(h){
+    return "• " + (h.title || "(untitled)") + " — " + (h.points || 0) + " points, " + (h.num_comments || 0) + " comments" +
+      (h.url ? "\n  " + h.url : "");
+  }).join("\n");
+}
+async function githubNow(input){
+  var raw = String(input || "").trim().replace(/^https?:\/\/github\.com\//, "").replace(/\/$/, "");
+  if(!raw) throw new Error("which repo? e.g. facebook/react");
+  var headers = { "Accept":"application/vnd.github+json" };
+  var parts = raw.split("/");
+  try{
+    var d = await getJSON("https://api.github.com/repos/" + parts[0] + "/" + (parts[1] || ""), headers);
+    return "🐙 " + d.full_name + (d.private ? " (private)" : "") + "\n• " + (d.description || "no description") +
+      "\n• ⭐ " + shortNum(d.stargazers_count) + " stars · 🍴 " + shortNum(d.forks_count) + " forks · 👀 " + shortNum(d.subscribers_count || 0) + " watchers" +
+      "\n• Language: " + (d.language || "—") + " · License: " + (d.license ? d.license.spdx_id : "none") +
+      "\n• Open issues: " + shortNum(d.open_issues_count) + " · Last push: " + (d.pushed_at || "").slice(0, 10) +
+      "\n• " + (d.html_url || "");
+  }catch(e){
+    if(!parts[1]) throw e;
+    throw new Error("could not read " + raw + " (" + e.message + ") — GitHub allows 60 lookups/hour without a token");
+  }
+}
+async function papersNow(topic){
+  var q = String(topic || "").trim();
+  if(!q) throw new Error("what topic?");
+  var d = await getJSON("https://api.openalex.org/works?search=" + encodeURIComponent(q) + "&per-page=5&sort=cited_by_count:desc");
+  var rows = (d && d.results) || [];
+  if(!rows.length) throw new Error("no papers found for \"" + q + "\"");
+  return "🎓 Most-cited research on \"" + q + "\":\n" + rows.map(function(w){
+    return "• " + (w.title || "(untitled)") + " (" + (w.publication_year || "?") + ") — " + shortNum(w.cited_by_count || 0) + " citations" +
+      (w.doi ? "\n  " + w.doi : "");
+  }).join("\n");
+}
+async function defineNow(word){
+  var w = String(word || "").trim().split(/\s+/)[0];
+  if(!w) throw new Error("which word?");
+  var d = await getJSON("https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(w));
+  var e = d && d[0]; if(!e) throw new Error("no definition for \"" + w + "\"");
+  var out = "📕 " + e.word + (e.phonetic ? " " + e.phonetic : "");
+  (e.meanings || []).slice(0, 3).forEach(function(m){
+    out += "\n• (" + m.partOfSpeech + ") " + ((m.definitions && m.definitions[0] && m.definitions[0].definition) || "");
+  });
+  return out;
+}
+var LANGS = {
+  hindi:"hi", tamil:"ta", telugu:"te", bengali:"bn", marathi:"mr", gujarati:"gu", punjabi:"pa", urdu:"ur",
+  kannada:"kn", malayalam:"ml", english:"en", french:"fr", spanish:"es", german:"de", italian:"it",
+  portuguese:"pt", russian:"ru", arabic:"ar", chinese:"zh", japanese:"ja", korean:"ko", turkish:"tr", dutch:"nl"
+};
+async function translateNow(input){
+  var s = String(input || "").trim();
+  var m = /^(?:to\s+)?([a-z]{2,12})\s*[:|]\s*([\s\S]+)$/i.exec(s);
+  if(!m) throw new Error("use: hindi: how are you  (or: to hindi | how are you)");
+  var to = LANGS[m[1].toLowerCase()] || m[1].toLowerCase();
+  if(to.length !== 2) throw new Error("unknown language \"" + m[1] + "\" — try hindi, tamil, french, spanish, japanese...");
+  var d = await getJSON("https://api.mymemory.translated.net/get?q=" + encodeURIComponent(m[2].slice(0, 480)) + "&langpair=en|" + to);
+  var t = d && d.responseData && d.responseData.translatedText;
+  if(!t) throw new Error("translation service returned nothing");
+  return "🌐 " + (LANGS[m[1].toLowerCase()] || m[1]).toUpperCase() + ": " + t;
+}
+async function readNow(url){
+  var u = String(url || "").trim();
+  if(!/^https?:\/\//i.test(u)) u = "https://" + u;
+  var text = await getText("https://r.jina.ai/" + u, { "Accept":"text/plain" }, 25000);
+  if(!text || text.length < 40) throw new Error("page returned no readable text");
+  var clean = text.replace(/\n{3,}/g, "\n\n").slice(0, 5000);
+  return "📄 READ: " + u + "\n\n" + clean + (text.length > 5000 ? "\n\n…(truncated)" : "");
+}
+function randomNow(input){
+  var s = String(input || "d6").toLowerCase().trim();
+  var m;
+  if(/^(coin|flip)$/.test(s)) return "🎲 " + (Math.random() < 0.5 ? "HEADS" : "TAILS");
+  if((m = /^d?(\d{1,4})$/.exec(s))) return "🎲 d" + m[1] + " → " + (1 + Math.floor(Math.random() * parseInt(m[1], 10)));
+  if((m = /^(\d{1,3})d(\d{1,4})$/.exec(s))){
+    var n = parseInt(m[1], 10), sides = parseInt(m[2], 10), rolls = [], sum = 0;
+    for(var i = 0; i < n; i++){ var r = 1 + Math.floor(Math.random() * sides); rolls.push(r); sum += r; }
+    return "🎲 " + n + "d" + sides + " → " + rolls.join(" + ") + " = **" + sum + "**";
+  }
+  if(/^uuid$/.test(s)) return "🆔 " + (window.crypto && crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c){
+    var r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16);
+  }));
+  if((m = /^(?:pass|password)\s*(\d{0,3})$/.exec(s))){
+    var len = Math.min(64, Math.max(8, parseInt(m[1] || "20", 10)));
+    var abc = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*-_=+";
+    var p = "";
+    var buf = new Uint32Array(len);
+    if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(buf); else for(var j = 0; j < len; j++) buf[j] = Math.floor(Math.random() * 4294967296);
+    for(var k = 0; k < len; k++) p += abc[buf[k] % abc.length];
+    return "🔑 " + len + "-char password:\n`" + p + "`\n(generated locally — never sent anywhere)";
+  }
+  throw new Error("use: coin | d20 | 3d6 | uuid | password 24");
+}
+function timerNow(input){
+  var s = String(input || "").toLowerCase().trim();
+  var m = /^(\d+(?:\.\d+)?)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hour|hours)?\s*(.*)$/.exec(s);
+  if(!m) throw new Error("use: 10m tea  (or 90s stretch)");
+  var n = parseFloat(m[1]) || 0, unit = m[2] || "m";
+  var mult = /^s/.test(unit) ? 1 : /^h/.test(unit) ? 3600 : 60;
+  var secs = Math.round(n * mult);
+  var label = (m[3] || "timer").trim() || "timer";
+  if(secs < 1 || secs > 86400) throw new Error("set a timer between 1 second and 24 hours");
+  setTimeout(function(){
+    toast("⏱️ " + label.toUpperCase() + " — time is up, sir.", 9000);
+    try{ if(state.voiceOut) speak("Sir, your " + label + " timer is up."); }catch(e){}
+    try{
+      if("Notification" in window && Notification.permission === "granted")
+        new Notification("J.A.R.V.I.S. — timer", { body: label + " finished" });
+    }catch(e){}
+  }, secs * 1000);
+  return "⏱️ Timer set for " + secs + "s — \"" + label + "\". I will alert you here when it fires (keep this tab open).";
+}
+
+/* ---------- TOOL REGISTRY ---------- */
+TOOLS = [
+  { id:"calc", emoji:"🔢", name:"Calculator", desc:"Exact arithmetic, %, powers, roots, trig — a real parser, not a guess.", sample:"18% of 4500 + sqrt(144)",
+    fn:async function(a){ var v = mathEval(a); return "🔢 `" + a + "` = **" + num(v) + "**"; } },
+  { id:"units", emoji:"📐", name:"Unit converter", desc:"Length, mass, time, data, speed, area, volume, temperature.", sample:"10 km to mi",
+    fn:async function(a){ return "📐 " + unitConvert(a); } },
+  { id:"time", emoji:"🕒", name:"World clock", desc:"Current time and date in any city or IANA timezone.", sample:"tokyo",
+    fn:async function(a){ return worldClock(a || "kanpur"); } },
+  { id:"weather", emoji:"🌦️", name:"Live weather", desc:"Real current conditions + 3-day forecast for any city (Open-Meteo, no key).", sample:"Kanpur",
+    fn:weatherNow },
+  { id:"forex", emoji:"💱", name:"Currency rates", desc:"Live exchange rates for 160+ currencies.", sample:"100 usd inr",
+    fn:forexNow },
+  { id:"crypto", emoji:"🪙", name:"Crypto prices", desc:"Live prices in USD and INR with 24h change (CoinGecko).", sample:"btc",
+    fn:cryptoNow },
+  { id:"wiki", emoji:"📖", name:"Wikipedia", desc:"Encyclopedic summary of any topic, with the source link.", sample:"Ada Lovelace",
+    fn:wikiSummary },
+  { id:"search", emoji:"🔎", name:"Web search", desc:"Live web results (Wikipedia + DuckDuckGo) with cited links.", sample:"best budget laptop 2026",
+    fn:doSearch },
+  { id:"news", emoji:"📰", name:"Tech news", desc:"What the tech world is discussing right now (Hacker News).", sample:"AI agents",
+    fn:newsNow },
+  { id:"github", emoji:"🐙", name:"GitHub intel", desc:"Stars, forks, language, license and activity of any repo.", sample:"facebook/react",
+    fn:githubNow },
+  { id:"papers", emoji:"🎓", name:"Research papers", desc:"Most-cited academic work on a topic (OpenAlex, 250M papers).", sample:"large language model agents",
+    fn:papersNow },
+  { id:"define", emoji:"📕", name:"Dictionary", desc:"Definitions and phonetics for any English word.", sample:"serendipity",
+    fn:defineNow },
+  { id:"translate", emoji:"🌐", name:"Translator", desc:"Translate text — Hindi, Tamil, Urdu, French, Japanese and more.", sample:"hindi: knowledge is power",
+    fn:translateNow },
+  { id:"read", emoji:"📄", name:"Page reader", desc:"Fetch any URL and give me its readable text — I can then summarise it.", sample:"https://example.com",
+    fn:readNow },
+  { id:"qr", emoji:"🔳", name:"QR generator", desc:"Turn any link or text into a scannable QR image.", sample:"https://kairven.github.io/jarvis/",
+    fn:async function(a){
+      var data = String(a || "").trim();
+      if(!data) throw new Error("what should the QR contain?");
+      var img = "https://api.qrserver.com/v1/create-qr-code/?size=340x340&margin=12&data=" + encodeURIComponent(data.slice(0, 900));
+      return { text:"🔳 QR code for `" + data.slice(0, 120) + "`", img: img };
+    } },
+  { id:"random", emoji:"🎲", name:"Randomiser", desc:"Dice, coin flips, UUIDs and strong local passwords.", sample:"3d6",
+    fn:async function(a){ return randomNow(a); } },
+  { id:"timer", emoji:"⏱️", name:"Timer & reminder", desc:"Set a countdown; I alert you here (and speak it) when it fires.", sample:"10m tea",
+    fn:async function(a){ return timerNow(a); } },
+  { id:"remember", emoji:"🧠", name:"Memory writer", desc:"Lets me save a durable fact about you straight into my Mind.", sample:"I prefer answers in bullet points",
+    fn:async function(a){
+      if(!addMemory(a, true)) throw new Error("that fact already exists in the Mind");
+      return "🧠 Saved to Mind: \"" + a + "\"";
+    } },
+  { id:"task", emoji:"⚙️", name:"Operator task", desc:"Log a commitment so I track it in every future conversation.", sample:"call the CA on Monday",
+    fn:async function(a){ addTask(a); return "⚙️ Commitment logged: ☐ " + a; } },
+  { id:"imagine", emoji:"🎨", name:"Image engine", desc:"Generate an image with Flux (free, no account).", sample:"a neon cyberpunk arc reactor",
+    fn:async function(a){
+      var seed = Math.floor(Math.random() * 999999);
+      var url = "https://image.pollinations.ai/prompt/" + encodeURIComponent(a + ", cinematic, highly detailed, sharp focus") +
+        "?width=832&height=832&nologo=true&model=flux&seed=" + seed;
+      return { text:"🎨 Image engine engaged (Flux): " + a, img: url };
+    } },
+  { id:"device", emoji:"🎛️", name:"Device agent", desc:"Run allowlisted commands on your Mac/phone via agent.py.", sample:"battery",
+    fn:async function(a){
+      if(!state.agentUrl) throw new Error("no device agent connected — run agent.py and paste its URL + token in the CONTROL tab");
+      var sp = /^([a-z_]+)\s*([\s\S]*)$/i.exec(String(a || "").trim());
+      if(!sp) throw new Error("use: status | battery | volume up | torch on | notify hello");
+      var r = await agentAPI(sp[1].toLowerCase(), (sp[2] || "").trim());
+      if(!r.ok) throw new Error(r.error);
+      return "🎛️ " + sp[1] + " " + (sp[2] || "") + "\n```\n" + String(r.output).slice(0, 1200) + "\n```";
+    } }
+];
+
+function toolById(id){
+  for(var i = 0; i < TOOLS.length; i++){ if(TOOLS[i].id === id) return TOOLS[i]; }
+  return null;
+}
+function toolEnabled(id){ return (state.toolsOff || []).indexOf(id) === -1; }
+function enabledTools(){ return TOOLS.filter(function(t){ return toolEnabled(t.id); }); }
+
+/* ---------- the one entry point everything uses ---------- */
+async function runTool(id, args){
+  var tool = toolById(String(id || "").toLowerCase());
+  var t0 = Date.now();
+  if(!tool) return { ok:false, id:id, args:args, out:"unknown tool \"" + id + "\" — available: " + enabledTools().map(function(t){ return t.id; }).join(", "), ms:0 };
+  if(!toolEnabled(tool.id)) return { ok:false, id:tool.id, args:args, out:"tool \"" + tool.id + "\" is switched off in the TOOLS tab", ms:0 };
+  try{
+    var r = await tool.fn(args || "");
+    var out = (r && typeof r === "object") ? r.text : r;
+    var res = { ok:true, id:tool.id, args:args || "", out:String(out), img:(r && r.img) || "", ms:Date.now() - t0 };
+    logTool(res); return res;
+  }catch(e){
+    var res2 = { ok:false, id:tool.id, args:args || "", out:(e && e.message) ? e.message : String(e), ms:Date.now() - t0 };
+    logTool(res2); return res2;
+  }
+}
+function logTool(res){
+  toolLog.unshift(res);
+  if(toolLog.length > 40) toolLog = toolLog.slice(0, 40);
+  if($("tool-log")) renderToolLog();
+}
+
+/* ---------- parsing the model's tool calls ---------- */
+function parseToolCalls(reply){
+  var text = String(reply || ""), calls = [], m;
+  var re = /\[TOOL:\s*([a-z_]+)\s*([^\]]{0,600})\]/gi;
+  while((m = re.exec(text))){ calls.push({ id:m[1].toLowerCase(), args:(m[2] || "").trim() }); }
+  /* legacy codes (old master prompts) → same tools */
+  var legacy = [[/^\s*\[SEARCH:\s*([^\]]{2,200})\]/i, "search"], [/^\s*\[IMAGE:\s*([^\]]{2,300})\]/i, "imagine"], [/^\s*\[DEVICE:\s*([^\]]{2,200})\]/i, "device"]];
+  for(var i = 0; i < legacy.length; i++){
+    var lm = legacy[i][0].exec(text);
+    if(lm) calls.push({ id: legacy[i][1], args: lm[1].trim() });
+  }
+  var seen = {}, uniq = [];
+  calls.forEach(function(c){ var k = c.id + "|" + c.args; if(!seen[k]){ seen[k] = 1; uniq.push(c); } });
+  return uniq.slice(0, 4);
+}
+function stripToolCodes(text){
+  return String(text || "")
+    .replace(/\[TOOL:\s*[a-z_]+\s*[^\]]{0,600}\]/gi, "")
+    .replace(/^\s*\[(SEARCH|IMAGE|DEVICE):\s*[^\]]+\]\s*/gim, "")
+    .replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/* ---------- the agent loop: think → call tools → answer ---------- */
+async function agentRun(msgs){
+  var trace = [], imgs = [], tried = {};
+  for(var round = 0; round < 4; round++){
+    var reply = await complete(msgs);
+    var calls = parseToolCalls(reply);
+    if(!calls.length || round === 3){
+      var finalText = stripToolCodes(reply);
+      imgs.forEach(function(u){ finalText += "\n\n![AI image](" + u + ")"; });
+      return { reply: finalText || "…", trace: trace };
+    }
+    msgs.push({ role:"assistant", content: reply });
+    var lines = [];
+    for(var i = 0; i < calls.length; i++){
+      var c = calls[i], key = c.id + "|" + c.args;
+      if(tried[key]){
+        lines.push("[" + c.id + "] already ran this exact call — use the earlier result.");
         continue;
       }
-      toast("🎛️ Agent controlling device: " + dm[1]);
-      var devRes = await agentAPI(dm[1], (dm[2]||"").trim());
-      toolNote = "=== TOOL RESULT — DEVICE COMMAND [" + dm[1] + " " + (dm[2]||"") + "] ===\n" + (devRes.ok ? ("SUCCESS:\n" + devRes.output) : ("FAILED: " + devRes.error)) + "\n=== Report the result to sir briefly, in character. Do NOT output a tool code again. ===";
-      continue;
+      tried[key] = 1;
+      var tool = toolById(c.id);
+      toast((tool ? tool.emoji : "🛠️") + " " + (tool ? tool.name : c.id) + (c.args ? ": " + c.args.slice(0, 46) : ""));
+      var res = await runTool(c.id, c.args);
+      if(res.img) imgs.push(res.img);
+      trace.push({ id:c.id, args:c.args, ok:res.ok, ms:res.ms });
+      lines.push("[" + c.id + " " + c.args + "]\n" + (res.ok ? res.out : "FAILED: " + res.out));
     }
-    reply = reply.replace(/^\s*\[(SEARCH|IMAGE):\s*[^\]]+\]\s*/i, "");
-    if(im){
-      var seed = Math.floor(Math.random()*999999);
-      var url = "https://image.pollinations.ai/prompt/" + encodeURIComponent(im[1]) + "?width=832&height=832&nologo=true&model=flux&seed=" + seed;
-      reply += "\n\n![AI image](" + url + ")";
-    }
-    return reply;
+    msgs.push({ role:"user", content:
+      "=== TOOL RESULTS (live, just now) ===\n" + lines.join("\n\n") +
+      "\n=== END TOOL RESULTS ===\nNow answer sir's original request using these results. " +
+      "Never invent data or contradict the results. Do not re-run a tool for the same information. " +
+      "Do not write any [TOOL: ...] line in the final answer." });
   }
-  return "⚠️ Tool loop limit reached, sir. Here is my direct answer instead.";
 }
+
+/* ---------- TOOLS tab UI ---------- */
+function renderTools(){
+  var grid = $("tools-grid"); if(!grid) return;
+  grid.innerHTML = TOOLS.map(function(t){
+    var on = toolEnabled(t.id);
+    return '<div class="tool-card' + (on ? "" : " off") + '">' +
+      '<div class="temoji">' + t.emoji + '</div>' +
+      '<div class="tmain"><b>' + esc(t.name) + '</b> <span class="mono tkey">/' + t.id + '</span>' +
+      '<p>' + esc(t.desc) + '</p>' +
+      (t.sample ? '<p class="mono tsample">try: ' + esc(t.sample) + '</p>' : "") + '</div>' +
+      '<div class="tside"><button class="btn small" onclick="toggleTool(\'' + t.id + '\')">' + (on ? "ON" : "OFF") + '</button>' +
+      '<button class="btn small gold" onclick="tryTool(\'' + t.id + '\')">TRY</button></div>' +
+      '</div>';
+  }).join("");
+  var count = $("tool-count");
+  if(count) count.textContent = enabledTools().length + " / " + TOOLS.length;
+  renderToolLog();
+}
+function toggleTool(id){
+  state.toolsOff = state.toolsOff || [];
+  var i = state.toolsOff.indexOf(id);
+  if(i === -1) state.toolsOff.push(id); else state.toolsOff.splice(i, 1);
+  save(); renderTools();
+  toast(toolEnabled(id) ? "🛠️ " + id + " enabled" : "🛠️ " + id + " disabled");
+}
+async function tryTool(id){
+  var t = toolById(id); if(!t) return;
+  var args = window.prompt("Arguments for " + t.name + " " + t.emoji, t.sample || "");
+  if(args === null) return;
+  toast(t.emoji + " Running " + t.name + "…");
+  var res = await runTool(id, args);
+  switchTab("tools");
+  renderToolLog();
+  if(!res.ok) toast("⚠️ " + res.out);
+}
+function renderToolLog(){
+  var el = $("tool-log"); if(!el) return;
+  if(!toolLog.length){
+    el.innerHTML = '<p class="mono" style="color:var(--dim);font-size:12px">No tool runs yet. Ask me something live — "what\'s the weather in Kanpur?" — or press TRY above.</p>';
+    return;
+  }
+  el.innerHTML = toolLog.slice(0, 14).map(function(r){
+    var t = toolById(r.id);
+    return '<div class="logrow"><div class="loghead mono">' + (t ? t.emoji : "🛠️") + " " + esc(r.id) +
+      (r.args ? " · " + esc(String(r.args).slice(0, 60)) : "") + ' <span class="' + (r.ok ? "ok" : "bad") + '">' +
+      (r.ok ? "✓" : "✗") + " " + r.ms + "ms</span></div>" +
+      '<pre class="mono">' + esc(String(r.out).slice(0, 700)) + '</pre></div>';
+  }).join("");
+}
+function clearToolLog(){ toolLog = []; renderToolLog(); }
 
 /* ---------- tools: web search (free, CORS-friendly) ---------- */
 async function wikiSearch(q){
@@ -795,7 +1462,7 @@ function statusText(){
     "| Brains | " + brainsConfiguredCount() + "/" + PROVIDERS.length + " connected · route " + (state.route === "deep" ? "🧪 DEEP" : "⚡ AUTO") + " |\n" +
     "| Cloud link | " + (navigator.onLine ? "🟢 ONLINE" : "🔴 OFFLINE") + " |\n" +
     "| Image engine | 🟢 Flux — free, via /imagine |\n" +
-    "| Agent loop | 🟢 [SEARCH] + [IMAGE] tool use enabled |\n" +
+    "| Tool belt | 🛠️ " + enabledTools().length + "/" + TOOLS.length + " live tools · zero keys · agent loop v2 |\n" +
     "| Battery | not exposed by this browser |\n" +
     "| Screen | " + window.screen.width + "×" + window.screen.height + " |\n" +
     "| Mind | " + state.memories.length + " memories, " + state.tasks.filter(function(t){return !t.done;}).length + " open tasks |\n" +
@@ -812,6 +1479,50 @@ async function sendFromInput(){
   inp.value = ""; inp.style.height = "auto";
   await handleUser(text);
 }
+/* ---------- direct slash commands: run a tool without a brain round-trip ---------- */
+var SLASH_TOOLS = {
+  calc:"calc", math:"calc", units:"units", convert:"units", time:"time", clock:"time",
+  weather:"weather", forecast:"weather", forex:"forex", currency:"forex", rate:"forex",
+  crypto:"crypto", coin:"crypto", wiki:"wiki", news:"news", hn:"news", github:"github", repo:"github",
+  papers:"papers", research:"papers", define:"define", dict:"define", translate:"translate",
+  read:"read", fetch:"read", qr:"qr", random:"random", roll:"random", timer:"timer", remind:"timer",
+  device:"device", tools:"__list", tool:"__tool"
+};
+function toolListMarkdown(){
+  return "🛠️ **LIVE TOOL BELT** — " + enabledTools().length + "/" + TOOLS.length + " enabled, all free and keyless.\n\n" +
+    "| Tool | What it does | Try |\n|---|---|---|\n" +
+    TOOLS.map(function(t){
+      return "| " + t.emoji + " `" + t.id + "` | " + t.desc + " | `/" + t.id + " " + (t.sample || "") + "` " + (toolEnabled(t.id) ? "" : "· **OFF**") + " |";
+    }).join("\n") +
+    "\n\nToggle any of them in the 🛠️ **TOOLS** tab. I also summon them myself when your question needs live data.";
+}
+async function runSlashTool(id, args, orig){
+  addMsg("user", orig || ("/" + id + (args ? " " + args : "")));
+  showTyping();
+  var res = await runTool(id, args);
+  hideTyping();
+  var md = res.ok ? res.out : ("⚠️ **" + id + " failed:** " + res.out);
+  if(res.img) md += "\n\n![generated](" + res.img + ")";
+  addMsg("jarvis", md, true, [{ id:id, args:args, ok:res.ok, ms:res.ms }]);
+  return true;
+}
+async function slashTool(text){
+  var m = /^\/([a-z]+)(?:\s+([\s\S]*))?$/i.exec(String(text).trim());
+  if(!m) return false;
+  var key = m[1].toLowerCase(), args = (m[2] || "").trim();
+  if(key === "tool"){
+    var t = /^([a-z_]+)\s*([\s\S]*)$/i.exec(args);
+    if(!t){ addMsg("user", text); addMsg("jarvis", toolListMarkdown()); return true; }
+    await runSlashTool(t[1].toLowerCase(), t[2].trim(), text);
+    return true;
+  }
+  if(!(key in SLASH_TOOLS)) return false;
+  var id = SLASH_TOOLS[key];
+  if(id === "__list"){ addMsg("user", text); addMsg("jarvis", toolListMarkdown()); return true; }
+  await runSlashTool(id, args, text);
+  return true;
+}
+
 async function handleUser(text){
   /* zero setup — the FREE brain works without any keys */
 
@@ -865,6 +1576,8 @@ async function handleUser(text){
   }
   if(/^\/?clear\b/i.test(text)){ clearChat(); return; }
 
+  if(await slashTool(text)) return;
+
   addMsg("user", text);
   showTyping();
 
@@ -897,11 +1610,11 @@ async function handleUser(text){
     }
     msgs.push({ role:"user", content: finalUser });
 
-    var reply = await agentRun(msgs);
+    var out = await agentRun(msgs);
     hideTyping();
-    addMsg("jarvis", reply);
-    speak(reply);
-    if(state.autoLearn) autoLearn(text, reply);
+    addMsg("jarvis", out.reply, true, out.trace);
+    speak(out.reply);
+    if(state.autoLearn) autoLearn(text, out.reply);
   }catch(err){
     hideTyping();
     var hint = "";
@@ -1216,6 +1929,64 @@ function addKnowledge(){
   renderKnowledge(); updateStats();
   toast("📚 Ingested into Knowledge Base");
 }
+function loadScript(src){
+  return new Promise(function(res, rej){
+    var s = document.createElement("script"); s.src = src; s.async = true;
+    s.onload = function(){ res(); }; s.onerror = function(){ rej(new Error("could not load " + src)); };
+    document.head.appendChild(s);
+  });
+}
+var PDFJS_SRC = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+var PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+async function ensurePdfJs(){
+  if(window.pdfjsLib) return window.pdfjsLib;
+  toast("📄 Loading pdf.js…");
+  await loadScript(PDFJS_SRC);
+  if(!window.pdfjsLib) throw new Error("pdf.js failed to load (offline or CDN blocked)");
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+  return window.pdfjsLib;
+}
+function readAsText(file){
+  return new Promise(function(res, rej){
+    var r = new FileReader();
+    r.onload = function(){ res(String(r.result || "")); };
+    r.onerror = function(){ rej(new Error("could not read file")); };
+    r.readAsText(file);
+  });
+}
+async function ingestFile(ev){
+  var f = ev.target.files && ev.target.files[0];
+  ev.target.value = "";
+  if(!f) return;
+  var name = f.name.replace(/\.[^.]+$/, "").slice(0, 80) || "Untitled";
+  try{
+    var text = "";
+    if(/\.pdf$/i.test(f.name) || f.type === "application/pdf"){
+      var pdfjs = await ensurePdfJs();
+      var buf = await (f.arrayBuffer ? f.arrayBuffer() : Promise.reject(new Error("this browser cannot read files")));
+      var pdf = await pdfjs.getDocument({ data: buf }).promise;
+      var pages = [], limit = Math.min(pdf.numPages, 60);
+      for(var i = 1; i <= limit; i++){
+        var page = await pdf.getPage(i);
+        var content = await page.getTextContent();
+        pages.push(content.items.map(function(it){ return it.str; }).join(" "));
+      }
+      text = pages.join("\n\n");
+      if(pdf.numPages > limit) text += "\n\n…(first " + limit + " pages of " + pdf.numPages + ")";
+    } else {
+      text = await readAsText(f);
+    }
+    text = String(text).replace(/[ \t]{2,}/g, " ").trim();
+    if(text.length < 20){ toast("No readable text — a scanned PDF needs OCR."); return; }
+    if(text.length > 120000) text = text.slice(0, 120000);
+    state.knowledge.push({ title: name, text: text, t: Date.now() });
+    if(state.knowledge.length > 100) state.knowledge = state.knowledge.slice(-100);
+    save(); renderKnowledge(); updateStats();
+    toast("📚 \"" + name + "\" ingested — " + text.length.toLocaleString("en-IN") + " characters in the Mind");
+  }catch(e){
+    toast("⚠️ " + (e.message || "could not read that file"));
+  }
+}
 function renderKnowledge(){
   var el = $("know-list"), html = "";
   for(var i = state.knowledge.length-1; i >= 0; i--){
@@ -1388,6 +2159,13 @@ $("input").addEventListener("input", function(){
 });
 $("task-input").addEventListener("keydown", function(e){ if(e.key === "Enter") addTaskFromInput(); });
 $("mem-input").addEventListener("keydown", function(e){ if(e.key === "Enter") addMemoryFromInput(); });
+
+/* exposed for debugging + automated tests */
+window.JARVIS = {
+  state: state, TOOLS: TOOLS, runTool: runTool, agentRun: agentRun, mathEval: mathEval,
+  unitConvert: unitConvert, parseToolCalls: parseToolCalls, stripToolCodes: stripToolCodes,
+  slashTool: slashTool, renderTools: renderTools, toolById: toolById
+};
 
 if("serviceWorker" in navigator && location.protocol.indexOf("http") === 0){
   navigator.serviceWorker.register("sw.js").catch(function(){});

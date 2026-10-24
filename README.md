@@ -61,6 +61,11 @@ Voice output uses the built-in system voice — enable it in **SETUP → Behavio
 
 | Say this | What happens |
 |---|---|
+| `/tools` | Lists the full 21-tool belt (and lets you call any of them) |
+| `/weather Kanpur` | Live weather + 3-day forecast, any city |
+| `/calc 18% of 4500` | Exact math — percentages, powers, roots, trig |
+| `/github facebook/react` | Stars, forks, licence, activity of any repo |
+| `/read https://example.com` | Reads any web page, then summarises it |
 | `/search best budget laptop 2026` | Searches the web live, structures the findings with sources |
 | `/imagine a neon cyberpunk arc reactor` | Generates an AI image (Flux — free, no account) |
 | `/brief` | Daily Operator brief: your tasks, focus, opportunity, risk |
@@ -72,6 +77,36 @@ Voice output uses the built-in system voice — enable it in **SETUP → Behavio
 | `/security 6-month ethical hacker study plan` | Legal white-hat career path |
 | `/learn` | JARVIS re-reads recent chat and extracts new facts about you |
 | `/clear` | Wipes the conversation (Mind is kept) |
+
+---
+
+## 🛠️ The Tool Belt — 21 live tools, zero keys
+
+JARVIS no longer just talks. He **acts**, and he decides when — mid-thought.
+
+```
+You:  "JARVIS, what's the weather in Kanpur, and what's BTC at right now?"
+JARVIS: [TOOL: weather Kanpur]
+        [TOOL: crypto btc]
+        → the app runs both live → he answers with the real numbers
+```
+
+| Category | Tools |
+|---|---|
+| Live data | weather · forex · crypto · news · search · wiki |
+| Exactness | calc · units · time · random |
+| Research | papers · github · define · translate · read |
+| Action | qr · timer · remember · task · imagine · device |
+
+Every call shows as a chip in the chat (`🌦️ weather ✓ 412ms`) and is logged with its
+output in the **🛠️ TOOLS** tab — you can switch any of them off, or press **TRY** to
+run one by hand. The full catalogue, the open-source repos behind it, and the honest
+limits are in **[TOOLS.md](TOOLS.md)**.
+
+Also new: **drop a PDF or text file into KNOWLEDGE** and it is extracted on your device
+(Mozilla pdf.js) and becomes part of JARVIS's searchable memory.
+
+---
 
 **Auto-Learn** (default ON): after every conversation, JARVIS silently extracts durable facts about you and saves them. **This is its self-training** — it gets smarter about your life every single day, and you can audit everything in the **🧠 MIND** tab.
 
@@ -104,6 +139,9 @@ It will never attack systems you don't own. Unauthorised access is a crime under
 | Free brain answers feel simple | Add a Hugging Face token — JARVIS automatically prefers it when present |
 | Replies feel slow | Free brain at peak load — add HF/Groq backup brains and JARVIS auto-switches |
 | Lost memories after reinstalling browser | Use SETUP → EXPORT BACKUP weekly — make it a habit |
+| A tool says "HTTP 403/429" | That service is rate-limiting. GitHub allows 60 lookups/hour without a token; wait or use another tool |
+| `/read` fails on a site | That page blocks readers (CORS/paywall) — paste the text instead, or add it in KNOWLEDGE |
+| "pdf.js failed to load" | The CDN was blocked/offline. Text and MD files still work; PDFs need one online load |
 
 ---
 
