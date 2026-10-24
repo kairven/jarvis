@@ -297,7 +297,7 @@ async function suiteSkills() {
   const { w, d } = await boot();
   const J = w.JARVIS;
 
-  assert("18 skills available", J.SKILLS.length === 18, J.SKILLS.length);
+  assert("22 skills available", J.SKILLS.length === 22, J.SKILLS.length);
   assert("12 built-in teachings", J.TEACHINGS.length === 12, J.TEACHINGS.length);
 
   const cases = [
@@ -327,7 +327,7 @@ async function suiteSkills() {
   /* prompt: only matched skills, inside budget */
   const sp = w.systemPrompt({ query: "my python code keeps crashing with an error" });
   assert("matched skill lands in the prompt", /ACTIVE SKILLS/.test(sp) && /Debugging/.test(sp));
-  assert("all 18 skills are NOT sent", (sp.match(/### /g) || []).length < 8, (sp.match(/### /g) || []).length + " headings");
+  assert("all 22 skills are NOT sent", (sp.match(/### /g) || []).length < 8, (sp.match(/### /g) || []).length + " headings");
   assert("skill block respects its budget", J.lastContext.skills.chars <= J.CONTEXT_BUDGET.skillChars, J.lastContext.skills.chars);
 
   /* teaching him directly */
@@ -340,7 +340,7 @@ async function suiteSkills() {
 
   /* UI + commands */
   J.renderSkills();
-  assert("skills list renders", d.querySelectorAll("#skills-list .skill-row").length === 18);
+  assert("skills list renders", d.querySelectorAll("#skills-list .skill-row").length === 22);
   await J.slashTool("/skills");
   assert("/skills lists the catalogue", /SKILLS/.test(d.getElementById("messages").textContent));
   await J.slashTool("/debug");
@@ -445,6 +445,72 @@ async function suiteVoice() {
   assert("no page errors from voice", errs.length === 0, errs.slice(0, 2).join(" | "));
 }
 
+/* ============ SUITE 7 — Kairven international kit ============ */
+async function suiteKairven() {
+  console.log("\n── SUITE 7 · Kairven intl kit ──");
+  const { w, d } = await boot();
+  const J = w.JARVIS;
+
+  /* the four new procedures exist and are retrievable by plain language */
+  ["intl-sales", "leak-audit", "sow", "outreach-law"].forEach((id) => {
+    assert("skill present: " + id, J.SKILLS.some((x) => x.id === id));
+  });
+  const intl = J.matchSkills("i want international clients in dubai and london", 3).map((x) => x.skill.id);
+  assert("timezone question pulls the intl-sales procedure", intl.includes("intl-sales"), JSON.stringify(intl));
+  const legal = J.matchSkills("can i cold email a clinic in germany", 3).map((x) => x.skill.id);
+  assert("jurisdiction question pulls the outreach-law procedure", legal.includes("outreach-law"), JSON.stringify(legal));
+
+  /* the procedure must carry the constraint that actually gates the plan */
+  const body = J.SKILLS.find((x) => x.id === "intl-sales").body;
+  assert("intl-sales names the timezone trap", /New York|timezone/i.test(body));
+  assert("intl-sales sequences UAE before the US", body.indexOf("Dubai") < body.indexOf("US"));
+
+  /* /leak builds a real worksheet, not a pep talk */
+  await J.slashTool("/leak Smile Dental, Dubai");
+  let out = d.getElementById("messages").textContent;
+  assert("/leak acknowledges the target", /Smile Dental, Dubai/.test(out));
+  const cells = Array.from(d.querySelectorAll("#messages table td")).map((c) => c.textContent);
+  const named = ["Answer speed", "Voicemail", "WhatsApp", "Booking path", "After hours",
+                 "Google listing", "Review velocity", "Mobile site", "Real proof"];
+  const missing = named.filter((n) => !cells.includes(n));
+  assert("/leak has all nine named checks", missing.length === 0, "missing: " + missing.join(", "));
+  assert("/leak gives a score threshold", /0–2/.test(out) && /6\+/.test(out));
+  assert("/leak refuses to invent a loss figure", /never claim a revenue loss/i.test(out));
+
+  /* /proposal scaffolds the offer in the buyer's currency */
+  await J.slashTool("/proposal Smile Dental | missed calls after 7pm");
+  out = d.getElementById("messages").textContent;
+  assert("/proposal uses the client name", /Proposal — Smile Dental/.test(out));
+  assert("/proposal carries the stated problem", /missed calls after 7pm/.test(out));
+  assert("/proposal quotes the Gulf price in dirhams", /AED 1,499/.test(out));
+  assert("/proposal quotes the UK price in pounds", /£329/.test(out));
+  assert("/proposal keeps unknown numbers as brackets", /\[their average value\]/.test(out));
+  assert("/proposal warns to delete brackets", /Delete every \[bracket\]/.test(out));
+
+  /* empty args must teach the syntax, not throw */
+  await J.slashTool("/leak");
+  assert("/leak without a name still works", /the business/.test(d.getElementById("messages").textContent));
+  await J.slashTool("/proposal");
+  assert("/proposal without args prints usage", /Usage:/.test(d.getElementById("messages").textContent));
+
+  /* friendly aliases route to the real procedure */
+  await J.slashTool("/international");
+  assert("/international resolves to intl-sales", /Selling abroad/.test(d.getElementById("messages").textContent));
+  await J.slashTool("/legal");
+  assert("/legal resolves to outreach-law", /Cold outreach law/.test(d.getElementById("messages").textContent));
+
+  /* welcome teaches the new commands */
+  w.clearChat && null;
+  d.getElementById("messages").innerHTML = "";
+  w.welcome();
+  const wl = d.getElementById("messages").textContent;
+  assert("welcome advertises /leak", /\/leak/.test(wl));
+  assert("welcome advertises /proposal", /\/proposal/.test(wl));
+  assert("welcome counts 22 skills", /22 skills/.test(wl));
+  assert("welcome reports the current version", /v4\.5/.test(wl), wl.slice(0, 80));
+  assert("welcome does not claim 18 skills", !/18 skills/.test(wl));
+}
+
 (async () => {
   await suitePerf();
   await suiteChat();
@@ -452,6 +518,7 @@ async function suiteVoice() {
   await suiteAuditFixes();
   await suiteSkills();
   await suiteVoice();
+  await suiteKairven();
   finish();
 })().catch((e) => {
   console.log("FAIL · suite crashed: " + (e && e.stack ? e.stack : e));
