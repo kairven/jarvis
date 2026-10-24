@@ -136,18 +136,18 @@ in, what was held back, tokens spent, and whether your data is actually being sa
 A full code audit (4 real bugs found and fixed, including silent data loss when browser
 storage fills up) is in **[AUDIT.md](AUDIT.md)**.
 
-### 🎓 v4.3 — taught: 18 skills + 12 reference notes on transformer models
+### 🎓 v4.3 — taught: 18 skills + 12 reference notes on transformer models (now 22)
 
 I cannot copy a model's weights into a browser file — nobody can. What transfers is
 **procedure and reference knowledge, delivered when relevant**, and that is what this adds.
 
 | | What |
 |---|---|
-| **18 skills** | debugging, code review, architecture, testing, writing, studying, business, money, marketing, negotiation, decisions, security, prompt engineering, learning AI, research, interviews, explaining, data analysis — each a *procedure*, injected only when your message matches |
+| **22 skills** | debugging, code review, architecture, testing, writing, studying, business, money, marketing, negotiation, decisions, security, prompt engineering, learning AI, research, interviews, explaining, data analysis, selling abroad, leak audits, SOWs, cold-outreach law — each a *procedure*, injected only when your message matches |
 | **12 teachings** | how transformers, tokens, embeddings, RAG, fine-tuning, agents, evaluation, hallucination, local models, latency, language fairness and the AI learning path actually work |
 | **Teach it yourself** | `/teach <rule>` — your knowledge, retrieved when relevant, deletable any time |
 
-Costs nothing until needed: all 18 skills are ~9 KB on disk but at most **1,500 characters**
+Costs nothing until needed: all 22 skills are ~10 KB on disk but at most **1,500 characters**
 per turn, and *"what's the weather in Kanpur"* injects **no skill at all**.
 
 ```
@@ -157,6 +157,25 @@ per turn, and *"what's the weather in Kanpur"* injects **no skill at all**.
 ```
 
 Details, honest limits and sizes: **[SKILLS.md](SKILLS.md)**.
+
+### 🌍 v4.5 — the international client kit
+
+The business question stopped being *"what can the AI do"* and became *"how does it earn"*.
+Two answers, both deterministic — no model call, no token cost:
+
+| Command | What you get |
+|---|---|
+| `/leak <business>` | A nine-check public audit worksheet: call twice, check voicemail, WhatsApp Business, booking path, after-hours reply, Google listing, review velocity, mobile speed, real proof — each with the pass/fail rule, a scoring band, and the three-line email to send afterwards |
+| `/proposal <client> \| <problem>` | A complete SOW in four currencies (AED / £ / $ / ₹), with every number you cannot know left as a `[bracket]` and a warning to delete them |
+
+Plus four procedures that load only when relevant: **selling abroad** (choose the market
+by timezone overlap and payment rails, not by size), **leak audit**, **proposals & SOW**,
+and **cold outreach law** (PECR, CAN-SPAM, CASL, DPDP — including the markets where cold
+email is simply not allowed).
+
+The full playbook — market ranking with the clock arithmetic, pricing anchors, the
+14-day launch calendar, the three emails, payment rails and the legal matrix — is in
+**[INTL.md](INTL.md)**.
 
 ### 🎙️ v4.4 — "hey jarvis" wake word, and real-time data that actually works
 

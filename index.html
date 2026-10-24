@@ -612,7 +612,7 @@ window.addEventListener("unhandledrejection", function(ev){
 });
 
 /* ================================================================
-   J.A.R.V.I.S. MK-II v4.4 — single-folder personal AI
+   J.A.R.V.I.S. MK-II v4.5 — single-folder personal AI
    8 free LLM brains + 22-tool agent loop (cached, retried, degraded)
    + image engine + PWA
    Mind: localStorage on your device — nothing leaves you
@@ -807,7 +807,7 @@ function clearChat(){
   state.chat = []; save(); $("messages").innerHTML = ""; welcome(); updateStats();
 }
 function welcome(){
-  var intro = "Good day, sir. **J.A.R.V.I.S. MK-II v4.4 online.** All systems nominal."
+  var intro = "Good day, sir. **J.A.R.V.I.S. MK-II v4.5 online.** All systems nominal."
     + "\n\nI am your personal AI: my mind lives **on your device**, my brains in the **free cloud**. The more we talk, the more I learn about you."
     + "\n\n**Say it, don't type it.** Tap **\ud83d\udcf4** and say *\"hey jarvis, what's the weather?\"*, or **\ud83c\udf99\ufe0f** for one phrase. It needs Chrome or Edge over https:// or localhost; `/voice` tells you if something is blocking the mic."
     + "\n\n| Command | What I do |\n|---|---|";
@@ -822,15 +822,17 @@ function welcome(){
   intro += "\n| `" + '/weather Kanpur' + "` | " + 'Live weather + 3-day forecast' + " |";
   intro += "\n| `" + '/calc 18% of 4500' + "` | " + 'Exact math, not a guess' + " |";
   intro += "\n| `" + '/tools' + "` | " + 'See all 22 live tools' + " |";
-  intro += "\n| `" + '/skills' + "` | " + '18 procedures: debug, study, money, negotiate...' + " |";
+  intro += "\n| `" + '/skills' + "` | " + '22 procedures: debug, study, money, negotiate...' + " |";
+  intro += "\n| `" + '/leak Smile Dental, Dubai' + "` | " + 'Nine-check public audit of a prospect clinic' + " |";
+  intro += "\n| `" + '/proposal Smile Dental | missed calls after 7pm' + "` | " + 'Draft the offer in four currencies' + " |";
   intro += "\n| `" + '/voice' + "` | " + 'Voice diagnostics: shows what is blocking the mic' + " |";
-  intro += "\n\n**Zero setup:** the FREE brain works right now, no account, no key. I carry **8 free brains** with auto-switching, a **22-tool belt**, **18 skills** and **12 reference notes**, and I fetch live numbers before I answer instead of guessing."
+  intro += "\n\n**Zero setup:** the FREE brain works right now, no account, no key. I carry **8 free brains** with auto-switching, a **22-tool belt**, **22 skills** and **12 reference notes**, and I fetch live numbers before I answer instead of guessing."
     + "\n\nConnect more brains in \u2699\ufe0f **SETUP** for superintelligence mode. Try `/weather Kanpur`, `/calc 18% of 4500`, or `/tools`.";
   renderMsg("jarvis", intro);
 }
 /* ---------- THE BUILT-IN MASTER PROMPT (polished prompt engineering, v3) ---------- */
 function builtinCore(){
-  return "You are J.A.R.V.I.S. MK-II (v4.4) — the personal AI system of Mohd Sameer Khan. Persona: calm, precise, loyal, quietly witty like Jarvis in Iron Man; address him as \"sir\" naturally, never overdone.\n\n" +
+  return "You are J.A.R.V.I.S. MK-II (v4.5) — the personal AI system of Mohd Sameer Khan. Persona: calm, precise, loyal, quietly witty like Jarvis in Iron Man; address him as \"sir\" naturally, never overdone.\n\n" +
   "PRIME DIRECTIVES:\n" +
   "1. Be USEFUL: every answer is actionable and specific — markdown structure, numbered steps, tables when they help. Zero fluff.\n" +
   "2. Be HONEST: never invent facts, sources, or numbers. If uncertain, say so and explain how to verify.\n" +
@@ -997,7 +999,23 @@ var SKILLS = [
 
   { id:"data", emoji:"📊", name:"Data analysis",
     triggers:"data analysis spreadsheet excel csv metric statistics chart graph trend report",
-    body:"Before analysing: what is one row, what is the period, what is missing? Check the denominator — rates mislead more than counts. Plot before you compute. When comparing, show the same measure for both sides. Correlation is not cause: name a mechanism or say you cannot. Round to the precision that changes a decision. Put the caveat in one line beside the number." }
+    body:"Before analysing: what is one row, what is the period, what is missing? Check the denominator — rates mislead more than counts. Plot before you compute. When comparing, show the same measure for both sides. Correlation is not cause: name a mechanism or say you cannot. Round to the precision that changes a decision. Put the caveat in one line beside the number." },
+
+  { id:"intl-sales", emoji:"🌍", name:"Selling abroad",
+    triggers:"international overseas abroad foreign client export usa uk dubai uae gulf canada australia global overseas customer",
+    body:"Pick the market on two hard constraints before size: awake-hour overlap, and whether you can get paid. From India: Dubai is 1.5h behind and runs on English, so a 16:00 Dubai call is 17:30 for you. London is 4.5-5.5h behind, so calls land 14:30-19:00 — workable. Sydney is 4.5-5.5h ahead: 06:30-08:00 or after 16:00 — painful. New York is 9.5-10.5h behind, so a 10:00 call there is 19:30-20:30 for you and a 15:00 one is 00:30 — that timezone, not the competition, is why a solo operator should not start in the US. Second constraint is proof: sell where your first two case studies are believed. A UAE clinic and a UK clinic read the same on a screen; a US buyer asks what you have done in the US. Sequence UAE, then UK, then Australia, then US. Quote in the buyer's currency, always, and never show the rupee price to an overseas buyer. One niche, one city, one offer until ten conversations say the same thing." },
+
+  { id:"leak-audit", emoji:"🔎", name:"Leak audit",
+    triggers:"leak audit clinic dentist dental missed call no answer booking enquiry prospect outreach diagnose practice",
+    body:"The audit is the product; the sale is an afterthought. Nine checks, public data only, 20 minutes: call twice (11:00 and 19:00) and count rings; listen to the voicemail; open the number in WhatsApp and see if it is a Business account with auto-reply; try to book without calling and count the taps; send a web enquiry at 21:00 and time the reply; check Google hours, photos and whether reviews get answered; count reviews in the last six months; load the mobile site on 4G; look for one named real result. Score: 0-2 leaks means not a prospect, 3-5 is an opening, 6+ means call today. Send three lines — what you checked and when, the single most expensive leak with its evidence, and the price. Use only their numbers, never an invented loss, and walk away when you find nothing: that one honest exit buys more referrals than any pitch." },
+
+  { id:"sow", emoji:"📄", name:"Proposals & SOW",
+    triggers:"proposal quote scope sow statement work estimate bid tender pitch contract offer",
+    body:"One problem, one number, one price. Structure: the finding with evidence, what it costs them in their own numbers, exactly what you install and in how many days, the price, the terms, and a short 'what this is not'. Never list a menu — a menu makes them comparison-shop, a diagnosis makes them choose between fixing it and not. Put the risk reversal in writing (cancel with 30 days, they keep the data). Every bracket must be deleted before sending: a template read as a template is what they already ignored. Quote in their currency. Ask for 50% up front and the rest before go-live; a client who will not pay a deposit will not pay the balance." },
+
+  { id:"outreach-law", emoji:"⚖️", name:"Cold outreach law",
+    triggers:"cold email outreach gdpr pecr can spam consent dpdp legal unsubscribe spam compliance prospect list",
+    body:"Rules differ sharply and this is not legal advice — read the regulator's page before any large send. US: CAN-SPAM allows cold B2B email with a truthful subject, a real physical address, and opt-out honoured within 10 business days. UK: PECR plus UK GDPR — email to a registered limited company is permitted with clear identity and opt-out, but sole traders and partnerships are treated as individuals and need prior consent; ICO fines reach 17.5 million pounds. Germany and Austria require prior consent even B2B — do not cold email them. UAE: unsolicited commercial email is restricted; WhatsApp and referral are the channels that work. India: DPDP 2023 needs consent for marketing. Practical rule: cold email only registered companies in the US, UK, Canada and Australia, from a separate warmed domain, with one working opt-out and a suppression list that survives every campaign. Never buy a list and never scrape a directory into a send." }
 ];
 
 /* ================================================================
@@ -2536,6 +2554,94 @@ async function sendFromInput(){
   inp.value = ""; inp.style.height = "auto";
   await handleUser(text);
 }
+/* ================================================================
+   KAIRVEN — the international client kit
+   ----------------------------------------------------------------
+   Two deterministic commands, no brain round-trip and no API cost.
+   The *shape* of the work is fixed (audit, proposal); only the name
+   and the problem change. That is why this belongs in the app and
+   not in a prompt: a fixed procedure run 40 times beats a clever
+   paragraph run once.
+   ================================================================ */
+var INTL_PRICE = [
+  { mkt:"United States / Canada", s:"$399",  r:"$129/mo"     },
+  { mkt:"United Kingdom",         s:"£329",  r:"£99/mo"      },
+  { mkt:"UAE / Gulf",             s:"AED 1,499", r:"AED 449/mo" },
+  { mkt:"India (reference)",      s:"₹12,000", r:"₹3,000/mo" }
+];
+
+function leakWorksheet(name){
+  var who = String(name || "").trim() || "the business";
+  var checks = [
+    ["Answer speed", "Call the public number at 11:00 and again at 19:00", "No answer, or more than 5 rings, on either attempt"],
+    ["Voicemail", "Let it ring out and listen to the whole greeting", "Generic carrier greeting, no name, no next step"],
+    ["WhatsApp", "Open the number in WhatsApp — is it a Business account?", "No Business profile, or no auto-reply outside hours"],
+    ["Booking path", "Try to book on the phone, without calling", "More than 3 taps, or a form that promises a callback"],
+    ["After hours", "Send a web enquiry at 21:00", "No acknowledgement until the next working day"],
+    ["Google listing", "Check hours, photos, and whether reviews get replies", "Wrong hours, unanswered reviews, no photos this year"],
+    ["Review velocity", "Count reviews in the last 6 months", "Fewer than 2 a month, or a gap longer than 90 days"],
+    ["Mobile site", "Load it on 4G with the sound off", "Slower than 3 seconds, or the phone number is not tappable"],
+    ["Real proof", "Look for one named patient result", "Only stock photos and 'concept' demos"]
+  ];
+  var out = "# 🔎 LEAK AUDIT — " + who + "\n"
+    + "*Public data only. Nine checks. Twenty minutes. Do not contact them first — the audit is what earns the call.*\n\n"
+    + "| # | Check | How | What counts as a leak |\n|---|---|---|---|\n";
+  for(var i = 0; i < checks.length; i++){
+    out += "| " + (i + 1) + " | **" + checks[i][0] + "** | " + checks[i][1] + " | " + checks[i][2] + " |\n";
+  }
+  out += "\n**Score:** count the leaks.\n"
+    + "| Leaks | What it means | Do this |\n|---|---|---|\n"
+    + "| 0–2 | They run it well | Not a prospect. Note it and move on |\n"
+    + "| 3–5 | Real, fixable gaps | Opening line = the single most expensive leak |\n"
+    + "| 6+ | Bleeding | Call today, not next week |\n"
+    + "\n**Then send three lines, nothing more:**\n"
+    + "1. What you checked, and when.\n"
+    + "2. The one leak, with its evidence (a screenshot, the time you called).\n"
+    + "3. The sentence: *\"I fix that specific leak for " + INTL_PRICE[2].s + " setup and " + INTL_PRICE[2].r + " — want the 90-second version?\"*\n"
+    + "\n**Rules that keep this honest:** use their number, never an invented one; never claim a revenue loss you cannot show; if the audit finds nothing, say so and walk away."
+    + "\n\n*(Run this with `/leak <business name>` any time.)*";
+  return out;
+}
+
+function proposalScaffold(raw){
+  var txt = String(raw || "").trim();
+  if(!txt) return "Usage: `/proposal Smile Dental, Dubai | missed calls after 7pm`\n\nI will draft the whole thing except the numbers only you know — those stay in [brackets] for you to replace.";
+  var parts = txt.split(/\s*\|\s*|\s+—\s+|\s+--\s+/);
+  var client = (parts[0] || "the client").trim();
+  var problem = (parts[1] || "[the one leak you found, with the evidence]").trim();
+  var rows = INTL_PRICE.map(function(p){
+    return "| " + p.mkt + " | " + p.s + " setup | " + p.r + " |";
+  }).join("\n");
+  return "# Proposal — " + client + "\n"
+    + "**From** Mohd Sameer Khan · Kairven · kairven.netlify.app · kairvenhq@gmail.com\n\n"
+    + "## The leak\n" + problem + "\n\n"
+    + "## What it costs\n"
+    + "Every unanswered enquiry is a job or a patient you already paid to attract. One recovered booking per month at [their average value] covers the monthly fee many times over. I have not invented a loss figure for you — the number in brackets has to come from them, and if they cannot give it, use their cheapest published service instead.\n\n"
+    + "## What I install, in 7 days\n"
+    + "1. **Missed-call recovery** — the call goes unanswered, they get a WhatsApp or SMS within 60 seconds with a booking link.\n"
+    + "2. **Reminders** — 24 hours and 2 hours before the appointment, which is where most no-shows die.\n"
+    + "3. **One weekly number** — enquiries received, answered, booked. One email, every Monday.\n\n"
+    + "## Price\n"
+    + "| Market | One-time setup | Monthly |\n|---|---|---|\n" + rows + "\n\n"
+    + "No lock-in. Cancel with 30 days' notice and keep your data.\n\n"
+    + "## Terms\n"
+    + "50% to start, 50% before go-live. Monthly by card or bank transfer. You own the numbers, the booking link and the data.\n\n"
+    + "## What I need from you\n"
+    + "The number that should never be missed, your booking link or diary, and 20 minutes with whoever answers the phone.\n\n"
+    + "## What this is not\n"
+    + "It is not a new website, not an ad campaign, and not a promise of more patients. It recovers enquiries you already receive. If you get fewer than [10] enquiries a week, this is the wrong purchase and I will say so.\n\n"
+    + "---\n"
+    + "*Delete every [bracket] before sending. A proposal with a bracket in it reads as a template, and a template is what they already ignored.*";
+}
+
+async function runKairvenKit(key, args, orig){
+  addMsg("user", orig || ("/" + key));
+  var md = key === "leak" ? leakWorksheet(args) : proposalScaffold(args);
+  addMsg("jarvis", md);
+  return true;
+}
+
+
 /* ---------- direct slash commands: run a tool without a brain round-trip ---------- */
 var SLASH_TOOLS = {
   calc:"calc", math:"calc", units:"units", convert:"units", time:"time", clock:"time",
@@ -2583,8 +2689,14 @@ async function slashTool(text){
       : "⚠️ " + r.why);
     return true;
   }
+  if(key === "leak" || key === "proposal"){
+    await runKairvenKit(key, args, text);
+    return true;
+  }
   if(key === "forget"){ addMsg("user", text); addMsg("jarvis", "See the TOOLS tab → TEACHINGS, and press ✕ on the note you want removed."); return true; }
-  if(skillById(key) && !(key in SLASH_TOOLS)){ await runSkill(key, text); return true; }
+  var SKILL_ALIAS = { international:"intl-sales", overseas:"intl-sales", legal:"outreach-law", contract:"sow" };
+  var sk = skillById(key) ? key : (SKILL_ALIAS[key] || "");
+  if(sk && skillById(sk) && !(key in SLASH_TOOLS)){ await runSkill(sk, text); return true; }
   if(key === "tool"){
     var t = /^([a-z_]+)\s*([\s\S]*)$/i.exec(args);
     if(!t){ addMsg("user", text); addMsg("jarvis", toolListMarkdown()); return true; }

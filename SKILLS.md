@@ -11,15 +11,15 @@ output the most per kilobyte: **procedure and reference knowledge, delivered at 
 moment it is relevant.**
 
 That is not a downgrade. For real work, a mid-size model following a sharp procedure
-beats a huge model improvising — and this app now has 18 procedures and 12 reference
+beats a huge model improvising — and this app now has 22 procedures and 12 reference
 notes on how transformers work, retrieved by relevance.
 
 ---
 
-## 18 skills — procedures, not trivia
+## 22 skills — procedures, not trivia
 
 A skill is a *procedure*: the steps a senior person would apply. They are injected
-**only when your message matches**, so all 18 together cost about as much as one.
+**only when your message matches**, so all 22 together cost about as much as one.
 
 | Skill | Fires when you talk about | What it actually does |
 |---|---|---|
@@ -41,6 +41,10 @@ A skill is a *procedure*: the steps a senior person would apply. They are inject
 | 🎤 `interview` | interview, resume, recruiter, career | CAR stories, one real question, thank-you |
 | 📖 `explain` | explain, simple, teach, ELI5 | bridge from the known, say where the analogy breaks |
 | 📊 `data` | data, spreadsheet, metric, trend | denominator, plot first, correlation ≠ cause |
+| 🌍 `intl-sales` | international, overseas, Dubai, UK, US | pick the market on timezone + payment, not size |
+| 🔎 `leak-audit` | clinic, missed call, prospect, outreach | nine public checks; the audit *is* the product |
+| 📄 `sow` | proposal, quote, scope, bid | one problem, one number, one price |
+| ⚖️ `outreach-law` | cold email, GDPR, PECR, CAN-SPAM | per-market rules; the ones you must not email |
 
 ```
 /skills          list them all
@@ -114,9 +118,28 @@ as a rule — not a story.
 
 | Thing | Size | Cost per turn |
 |---|---|---|
-| All 18 skills | ~9 KB | 0 unless matched; **max 1,500 chars** when matched |
+| All 22 skills | ~9 KB | 0 unless matched; **max 1,500 chars** when matched |
 | All 12 teachings | ~14 KB | 0 unless matched; **max 1,900 chars** when matched |
 | Your own notes | ~1 KB each | only when relevant |
 
 Verified: asking *"my code crashes with this error"* injects the debugging skill and
 nothing else; *"what is the weather in Kanpur"* injects **no** skill at all.
+
+---
+
+## The Kairven kit — two commands that do actual work
+
+The four procedures above are the *thinking*; two commands are the *artifact*:
+
+```
+/leak Smile Dental, Dubai
+/proposal Smile Dental | missed calls after 7pm
+```
+
+`/leak` prints a nine-check worksheet with a pass/fail rule for each check and a
+scoring band (0–2 = not a prospect, 6+ = call today). `/proposal` drafts the entire
+SOW in four currencies and leaves every number you cannot know as a `[bracket]` that
+the command then tells you to delete.
+
+Both are deterministic: no model call, no token cost, same output every time. That is
+the point — **a fixed procedure run forty times beats a clever paragraph run once.**
